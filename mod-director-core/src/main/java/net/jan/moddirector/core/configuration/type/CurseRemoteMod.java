@@ -30,6 +30,7 @@ import net.jan.moddirector.core.util.WebGetResponse;
 public class CurseRemoteMod extends ModDirectorRemoteMod {
     private final int addonId;
     private final int fileId;
+    private final String fileName;
 
     private CurseAddonFileInformation information;
 
@@ -41,11 +42,13 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             @JsonProperty(value = "installationPolicy") InstallationPolicy installationPolicy,
             @JsonProperty(value = "options") Map<String, Object> options,
             @JsonProperty(value = "folder") String folder,
-            @JsonProperty(value = "inject") Boolean inject
+            @JsonProperty(value = "inject") Boolean inject,
+            @JsonProperty(value = "fileName") String fileName
             ) {
         super(metadata, installationPolicy, options, folder, inject);
         this.addonId = addonId;
         this.fileId = fileId;
+        this.fileName = fileName;
     }
 
     @Override
@@ -91,7 +94,11 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             throw new ModDirectorException("Failed to open connection to curse", e);
         }
 
-        return new RemoteModInformation(information.displayName, information.fileName);
+        if(fileName != null) {
+            return new RemoteModInformation(fileName, fileName);
+        } else {
+            return new RemoteModInformation(information.displayName, information.fileName);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
