@@ -31,47 +31,43 @@ public class StopModReposts {
         }
 
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "StopModReposts", "CORE",
-                "Checking %s against StopModReposts database", url.toExternalForm());
+            "Checking %s against StopModReposts database", url.toExternalForm());
         for(StopModRepostsEntry entry : ENTRIES) {
-            if(entry.pattern().matcher(url.toExternalForm()).matches()) {
+            if(url.toExternalForm().contains(entry.domain()) ) {
                 director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                        "STOP! Download URL %s is flagged in StopModReposts database, ABORTING!",
-                        url.toExternalForm());
+                    "STOP! Download URL %s is flagged in StopModReposts database, ABORTING!",
+                    url.toExternalForm());
                 director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                        "Domain %s is flagged", entry.domain());
+                    "Domain %s is flagged", entry.domain());
                 director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                        "Advertising score: %d", entry.advertising());
-                director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                        "Redistribution score: %d", entry.redistribution());
-                director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                        "Miscellaneous: ", entry.miscellaneous());
+                    "Reason: ", entry.reason());
                 if(!entry.notes().isEmpty()) {
                     director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
-                            "Notes: ", entry.notes());
+                        "Notes: ", entry.notes());
                 }
                 director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
-                        "Found URL " + url.toExternalForm() + " on domain " + entry.domain() + " flagged " +
-                                "in the StopModReposts database! Please use legal download pages, " +
-                                "ModDirector has aborted the launch."));
+                    "Found URL " + url.toExternalForm() + " on domain " + entry.domain() + " flagged " +
+                        "in the StopModReposts database! Please use legal download pages, " +
+                        "ModDirector has aborted the launch."));
                 throw new ModDirectorException("Found flagged URL " + url.toExternalForm() +
-                        " in StopModReposts database");
+                    " in StopModReposts database");
             }
         }
     }
 
     private static void initialize(ModDirector director) throws ModDirectorException {
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "StopModReposts", "CORE",
-                "Initializing StopModReposts module");
+            "Initializing StopModReposts module");
 
         try(WebGetResponse response =
-                    WebClient.get(new URL("https://api.varden.info/smr/sitelist.php?format=json"))) {
+                WebClient.get(new URL("https://api.stopmodreposts.org/sites.json"))) {
             JavaType targetType = ConfigurationController.OBJECT_MAPPER.getTypeFactory().
-                    constructCollectionType(List.class, StopModRepostsEntry.class);
+                constructCollectionType(List.class, StopModRepostsEntry.class);
 
             ENTRIES.addAll(ConfigurationController.OBJECT_MAPPER.readValue(response.getInputStream(), targetType));
         } catch(MalformedURLException e) {
             throw new RuntimeException(
-                    "https://api.varden.info/smr/sitelist.php?format=json seems to be an invalid URL?", e);
+                "https://api.stopmodreposts.org/sites.json seems to be an invalid URL?", e);
         } catch(IOException e) {
             throw new ModDirectorException("Failed to retrieve StopModReposts database", e);
         }
