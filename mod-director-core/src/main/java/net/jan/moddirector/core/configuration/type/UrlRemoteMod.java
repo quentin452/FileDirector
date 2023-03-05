@@ -70,7 +70,7 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
                 int startIndex = html.indexOf(follows[i]);
                 if(startIndex < 0) {
                     throw new ModDirectorException("Unable to find follow string " + follows[i] + " in html from " +
-                            urlToFollow.toString());
+                        urlToFollow);
                 }
 
                 int href = html.substring(0, startIndex).lastIndexOf("href=") + 5;
@@ -80,7 +80,7 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
                 String newUrl = html.substring(href + 1, hrefEnd);
                 if(newUrl.isEmpty()) {
                     throw new ModDirectorException("Result url was empty when matching " + follows[i] +
-                            " in html from " + urlToFollow.toString());
+                            " in html from " + urlToFollow);
                 }
 
                 try {
@@ -110,7 +110,7 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
                 IOOperation.copy(response.getInputStream(), outputStream, progressCallback, response.getStreamSize());
                 data = outputStream.toByteArray();
             } catch(IOException e) {
-                throw new ModDirectorException("Failed to follow URL's to download file", e);
+                throw new ModDirectorException("Failed to follow URLs to download file", e);
             }
 
             progressCallback.step();

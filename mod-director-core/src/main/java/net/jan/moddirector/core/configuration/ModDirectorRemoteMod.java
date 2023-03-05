@@ -4,12 +4,9 @@ import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.exception.ModDirectorException;
 import net.jan.moddirector.core.manage.ProgressCallback;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 public abstract class ModDirectorRemoteMod {
     private final RemoteModMetadata metadata;

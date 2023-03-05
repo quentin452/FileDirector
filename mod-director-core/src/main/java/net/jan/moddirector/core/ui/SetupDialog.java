@@ -1,14 +1,11 @@
 package net.jan.moddirector.core.ui;
 
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
-import net.jan.moddirector.core.configuration.modpack.ModpackIconConfiguration;
-import net.jan.moddirector.core.manage.ProgressCallback;
 import net.jan.moddirector.core.manage.select.InstallSelector;
 import net.jan.moddirector.core.ui.page.ModSelectionPage;
 import net.jan.moddirector.core.ui.page.ProgressPage;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.util.concurrent.CountDownLatch;
 
