@@ -19,7 +19,8 @@ public abstract class ModDirectorRemoteMod {
             RemoteModMetadata metadata,
             InstallationPolicy installationPolicy,
             Map<String, Object> options,
-            String folder, Boolean inject
+            String folder,
+            Boolean inject
     ) {
         this.metadata = metadata;
         this.installationPolicy = installationPolicy == null ? new InstallationPolicy(
@@ -27,7 +28,8 @@ public abstract class ModDirectorRemoteMod {
                 null,
                 null,
                 null,
-                null
+                null,
+                false
         ) : installationPolicy;
         this.options = options == null ? Collections.emptyMap() : options;
         this.folder = folder;

@@ -9,6 +9,7 @@ public class InstallationPolicy {
     private final boolean selectedByDefault;
     private final String name;
     private final String description;
+    private final boolean extract;
 
     @JsonCreator
     public InstallationPolicy(
@@ -16,13 +17,15 @@ public class InstallationPolicy {
             @JsonProperty(value = "optionalKey") String optionalKey,
             @JsonProperty(value = "selectedByDefault") Boolean selectedByDefault,
             @JsonProperty(value = "name") String name,
-            @JsonProperty(value = "description") String description
+            @JsonProperty(value = "description") String description,
+            @JsonProperty(value = "extract") boolean extract
     ) {
         this.continueOnFailedDownload = continueOnFailedDownload;
         this.optionalKey = optionalKey;
         this.selectedByDefault = selectedByDefault != null ? selectedByDefault : optionalKey != null;
         this.name = name;
         this.description = description;
+        this.extract = extract;
     }
 
     public boolean shouldContinueOnFailedDownload() {
@@ -43,5 +46,9 @@ public class InstallationPolicy {
 
     public String getDescription() {
         return description;
+    }
+
+    public boolean shouldExtract() {
+        return extract;
     }
 }

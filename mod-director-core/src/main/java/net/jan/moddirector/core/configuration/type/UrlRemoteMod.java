@@ -14,13 +14,15 @@ import net.jan.moddirector.core.util.IOOperation;
 import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.*;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class UrlRemoteMod extends ModDirectorRemoteMod {
     private final String fileName;
@@ -118,6 +120,28 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
 
         try {
             Files.write(targetFile, data);
+
+            if(this.getInstallationPolicy().shouldExtract()) {
+                try(ZipInputStream zipInputStream = new ZipInputStream(new ByteArrayInputStream(data))) {
+                    byte[] buffer = new byte[8192];
+                    ZipEntry zipEntry = zipInputStream.getNextEntry();
+                    while(zipEntry != null) {
+                        Path newFilePath = Paths.get(targetFile.getParent().toString(), zipEntry.getName());
+                        if(!zipEntry.isDirectory()) {
+                            progressCallback.message("Unzipping " + newFilePath.getFileName());
+                            try(FileOutputStream fileOutputStream = new FileOutputStream(newFilePath.toFile())) {
+                                int length;
+                                while((length = zipInputStream.read(buffer)) > 0) {
+                                    fileOutputStream.write(buffer, 0, length);
+                                }
+                            }
+                        } else {
+                            Files.createDirectories(newFilePath);
+                        }
+                        zipEntry = zipInputStream.getNextEntry();
+                    }
+                }
+            }
         } catch(IOException e) {
             throw new ModDirectorException("Failed to write file to disk", e);
         }

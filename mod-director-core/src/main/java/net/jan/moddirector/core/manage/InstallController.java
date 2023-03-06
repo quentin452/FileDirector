@@ -243,8 +243,13 @@ public class InstallController {
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
                     "Mod did not match hash after download"));
         } else {
-            director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+            if(remoteMod.getInstallationPolicy().shouldExtract()) {
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                    "CORE", "Extracted mod file %s", targetFile.toString());
+            } else {
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
                     "CORE", "Installed mod file %s", targetFile.toString());
+            }
             director.installSuccess(new InstalledMod(targetFile, remoteMod.getOptions(), remoteMod.forceInject()));
         }
 
