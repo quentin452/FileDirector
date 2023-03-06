@@ -204,7 +204,7 @@ public class InstallController {
 
         for(InstallableMod mod : mods) {
             installTasks.add(() -> {
-                handle(mod, callbackFactory.apply(mod.getRemoteMod().offlineName(), "Installing"));
+                handle(mod, callbackFactory.apply(mod.getRemoteInformation().getTargetFilename(), "Installing"));
                 return null;
             });
         }
