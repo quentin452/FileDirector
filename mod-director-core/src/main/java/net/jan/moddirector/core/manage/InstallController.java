@@ -122,6 +122,11 @@ public class InstallController {
                     }
 
                     reinstallMods.add(installableMod);
+                } else if(mod.getInstallationPolicy().shouldDownloadAlways() && Files.isRegularFile(targetFile)) {
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                        "CORE", "Force downloading file %s as download always option is set.",
+                        targetFile.toString());
+                    reinstallMods.add(installableMod);
                 } else if(Files.isRegularFile(targetFile)) {
                     director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "ModDirector/InstallController",
                             "CORE", "File %s exists and no metadata given, skipping download.",
