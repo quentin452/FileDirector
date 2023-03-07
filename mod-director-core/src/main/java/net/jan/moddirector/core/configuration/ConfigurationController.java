@@ -108,8 +108,8 @@ public class ConfigurationController {
             try(WebGetResponse response = WebClient.get(remoteConfig.getUrl())) {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 IOOperation.copy(response.getInputStream(), outputStream);
-                String urlString = remoteConfig.getUrl().toString();
-                Path remoteConfigPath = Paths.get(installationRoot.toString(), configurationDirectory.toString(), urlString.substring(urlString.lastIndexOf('/') + 1));
+                String fileName = remoteConfig.getUrl().toString().substring(remoteConfig.getUrl().toString().lastIndexOf('/') + 1);
+                Path remoteConfigPath = installationRoot.resolve(configurationDirectory).resolve(fileName);
                 Files.write(remoteConfigPath, outputStream.toByteArray());
                 addConfig(remoteConfigPath);
                 Files.delete(remoteConfigPath);
