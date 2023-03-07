@@ -7,17 +7,27 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
 import net.jan.moddirector.core.configuration.type.CurseRemoteMod;
+import net.jan.moddirector.core.configuration.type.RemoteConfig;
 import net.jan.moddirector.core.configuration.type.UrlRemoteMod;
 import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
 import net.jan.moddirector.core.manage.ModDirectorError;
+import net.jan.moddirector.core.util.IOOperation;
+import net.jan.moddirector.core.util.WebClient;
+import net.jan.moddirector.core.util.WebGetResponse;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class ConfigurationController {
     public static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
@@ -67,7 +77,7 @@ public class ConfigurationController {
         try(InputStream stream = Files.newInputStream(configurationPath)) {
             modpackConfiguration = OBJECT_MAPPER.readValue(stream, ModpackConfiguration.class);
             return true;
-        } catch (IOException e) {
+        } catch(IOException e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
                     "CORE", e, "Failed to read modpack configuration!");
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
@@ -77,27 +87,78 @@ public class ConfigurationController {
     }
 
     private void addConfig(Path configurationPath) {
+        String configString = configurationPath.toString();
+
         director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
-                "CORE", "Loading config %s", configurationPath.toString());
+                "CORE", "Loading config %s", configString);
 
-        Class<? extends ModDirectorRemoteMod> targetType = getTypeForFile(configurationPath);
-        if(targetType == null) {
-            return;
+        if(configString.endsWith(".remote.json")) {
+            handleRemoteConfig(configurationPath);
+        } else if(configString.endsWith(".bundle.json")) {
+            handleBundleConfig(configurationPath);
+        } else {
+            handleSingleConfig(configurationPath);
         }
+    }
 
+    private void handleRemoteConfig(Path configurationPath) {
+        Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
         try(InputStream stream = Files.newInputStream(configurationPath)) {
-            configurations.add(OBJECT_MAPPER.readValue(stream, targetType));
-        } catch(JsonParseException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
-                    "CORE", e, "Failed to parse a configuration!");
-            director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
-                    "Failed to parse a configuration", e));
+            RemoteConfig remoteConfig = OBJECT_MAPPER.readValue(stream, RemoteConfig.class);
+            try(WebGetResponse response = WebClient.get(remoteConfig.getUrl())) {
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                IOOperation.copy(response.getInputStream(), outputStream);
+                String urlString = remoteConfig.getUrl().toString();
+                Path remoteConfigPath = Paths.get(installationRoot.toString(), configurationDirectory.toString(), urlString.substring(urlString.lastIndexOf('/') + 1));
+                Files.write(remoteConfigPath, outputStream.toByteArray());
+                addConfig(remoteConfigPath);
+                Files.delete(remoteConfigPath);
+            }
         } catch(IOException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
-                    "CORE", e, "Failed to open a configuration for reading!");
-            director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
-                    "Failed to open a configuration for reading", e));
+            handleConfigException(e);
         }
+    }
+
+    private void handleBundleConfig(Path configurationPath) {
+        try(InputStream stream = Files.newInputStream(configurationPath);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            JsonObject jsonObject = new JsonParser().parse(reader).getAsJsonObject();
+
+            JsonArray jsonArray = jsonObject.getAsJsonArray("curse");
+            if(jsonArray != null) {
+                for(JsonElement jsonElement : jsonArray) {
+                    configurations.add(OBJECT_MAPPER.readValue(jsonElement.toString(), CurseRemoteMod.class));
+                }
+            }
+
+            jsonArray = jsonObject.getAsJsonArray("url");
+            if(jsonArray != null) {
+                for(JsonElement jsonElement : jsonArray) {
+                    configurations.add(OBJECT_MAPPER.readValue(jsonElement.toString(), UrlRemoteMod.class));
+                }
+            }
+        } catch(IOException e) {
+            handleConfigException(e);
+        }
+    }
+
+    private void handleSingleConfig(Path configurationPath) {
+        Class<? extends ModDirectorRemoteMod> targetType = getTypeForFile(configurationPath);
+        if(targetType != null) {
+            try(InputStream stream = Files.newInputStream(configurationPath)) {
+                configurations.add(OBJECT_MAPPER.readValue(stream, targetType));
+            }
+            catch(IOException e) {
+                handleConfigException(e);
+            }
+        }
+    }
+
+    private void handleConfigException(IOException e) {
+        director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
+            "CORE", e, "Failed to " + (e instanceof JsonParseException ? "parse" : "open") + " a configuration for reading!");
+        director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
+            "Failed to " + (e instanceof JsonParseException ? "parse" : "open") + " a configuration for reading", e));
     }
 
     private Class<? extends ModDirectorRemoteMod> getTypeForFile(Path file) {
