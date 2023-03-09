@@ -94,8 +94,11 @@ public class InstallController {
                     return null;
                 }
 
-                if(mod.getMetadata() != null && Files.isRegularFile(targetFile)) {
-                    HashResult hashResult = mod.getMetadata().checkHashes(targetFile, director);
+                Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
+                Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
+
+                if(mod.getMetadata() != null && (Files.isRegularFile(targetFile) || (Files.isRegularFile(bansoukouPatchedFile) && Files.isRegularFile(bansoukouDisabledFile)))) {
+                    HashResult hashResult = mod.getMetadata().checkHashes(Files.isRegularFile(targetFile) ? targetFile : bansoukouDisabledFile, director);
 
                     switch(hashResult) {
                         case UNKNOWN:
@@ -120,18 +123,22 @@ public class InstallController {
                                     "CORE", "File %s exists, but hashes do not match, downloading again!",
                                     targetFile.toString());
                     }
-
+                    Files.deleteIfExists(bansoukouPatchedFile);
+                    Files.deleteIfExists(bansoukouDisabledFile);
                     reinstallMods.add(installableMod);
+
                 } else if(mod.getInstallationPolicy().shouldDownloadAlways() && Files.isRegularFile(targetFile)) {
                     director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
                         "CORE", "Force downloading file %s as download always option is set.",
                         targetFile.toString());
                     reinstallMods.add(installableMod);
+
                 } else if(Files.isRegularFile(targetFile)) {
                     director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "ModDirector/InstallController",
                             "CORE", "File %s exists and no metadata given, skipping download.",
                             targetFile.toString());
                     excludedMods.add(mod);
+
                 } else {
                     freshMods.add(installableMod);
                 }
@@ -169,6 +176,14 @@ public class InstallController {
 
     private Path computeDisabledPath(Path modFile) {
         return modFile.resolveSibling(modFile.getFileName() + ".disabled-by-mod-director");
+    }
+
+    private Path computeBansoukouPatchedPath(Path modFile) {
+        return modFile.resolveSibling(modFile.getFileName().toString().replace(".jar","-patched.jar"));
+    }
+
+    private Path computeBansoukouDisabledPath(Path modFile) {
+        return modFile.resolveSibling(modFile.getFileName().toString().replace(".jar",".disabled"));
     }
 
     public void markDisabledMods(List<InstallableMod> mods) {
