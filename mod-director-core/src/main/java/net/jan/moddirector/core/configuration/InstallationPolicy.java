@@ -11,6 +11,7 @@ public class InstallationPolicy {
     private final String description;
     private final boolean extract;
     private final boolean downloadAlways;
+    private final String supersede;
 
     @JsonCreator
     public InstallationPolicy(
@@ -20,7 +21,8 @@ public class InstallationPolicy {
             @JsonProperty(value = "name") String name,
             @JsonProperty(value = "description") String description,
             @JsonProperty(value = "extract") boolean extract,
-            @JsonProperty(value = "downloadAlways") boolean downloadAlways
+            @JsonProperty(value = "downloadAlways") boolean downloadAlways,
+            @JsonProperty(value = "supersede") String supersede
     ) {
         this.continueOnFailedDownload = continueOnFailedDownload;
         this.optionalKey = optionalKey;
@@ -29,6 +31,7 @@ public class InstallationPolicy {
         this.description = description;
         this.extract = extract;
         this.downloadAlways = downloadAlways;
+        this.supersede = supersede;
     }
 
     public boolean shouldContinueOnFailedDownload() {
@@ -57,5 +60,9 @@ public class InstallationPolicy {
 
     public boolean shouldDownloadAlways() {
         return downloadAlways;
+    }
+
+    public String getSupersededFileName() {
+        return supersede;
     }
 }

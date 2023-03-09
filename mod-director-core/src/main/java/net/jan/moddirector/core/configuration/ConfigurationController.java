@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
 import net.jan.moddirector.core.configuration.type.CurseRemoteMod;
+import net.jan.moddirector.core.configuration.type.DisableMod;
 import net.jan.moddirector.core.configuration.type.RemoteConfig;
 import net.jan.moddirector.core.configuration.type.UrlRemoteMod;
 import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
@@ -19,7 +20,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -96,19 +96,21 @@ public class ConfigurationController {
             handleRemoteConfig(configurationPath);
         } else if(configString.endsWith(".bundle.json")) {
             handleBundleConfig(configurationPath);
+        } else if(configString.endsWith(".disable.json")) {
+            handleDisableConfig(configurationPath);
         } else {
             handleSingleConfig(configurationPath);
         }
     }
 
     private void handleRemoteConfig(Path configurationPath) {
-        Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
         try(InputStream stream = Files.newInputStream(configurationPath)) {
             RemoteConfig remoteConfig = OBJECT_MAPPER.readValue(stream, RemoteConfig.class);
             try(WebGetResponse response = WebClient.get(remoteConfig.getUrl())) {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 IOOperation.copy(response.getInputStream(), outputStream);
                 String fileName = remoteConfig.getUrl().toString().substring(remoteConfig.getUrl().toString().lastIndexOf('/') + 1);
+                Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
                 Path remoteConfigPath = installationRoot.resolve(configurationDirectory).resolve(fileName);
                 Files.write(remoteConfigPath, outputStream.toByteArray());
                 addConfig(remoteConfigPath);
@@ -137,6 +139,14 @@ public class ConfigurationController {
                     configurations.add(OBJECT_MAPPER.readValue(jsonElement.toString(), UrlRemoteMod.class));
                 }
             }
+
+            jsonArray = jsonObject.getAsJsonArray("disable");
+            if(jsonArray != null) {
+                for(JsonElement jsonElement : jsonArray) {
+                    DisableMod disableMod = OBJECT_MAPPER.readValue(jsonElement.toString(), DisableMod.class);
+                    handleDisableConfig(disableMod);
+                }
+            }
         } catch(IOException e) {
             handleConfigException(e);
         }
@@ -151,6 +161,35 @@ public class ConfigurationController {
             catch(IOException e) {
                 handleConfigException(e);
             }
+        }
+    }
+
+    private void handleDisableConfig(Path configurationPath) {
+        try(InputStream stream = Files.newInputStream(configurationPath)) {
+            DisableMod disableMod = OBJECT_MAPPER.readValue(stream, DisableMod.class);
+            handleDisableConfig(disableMod);
+        } catch(IOException e) {
+            handleConfigException(e);
+        }
+    }
+
+    private void handleDisableConfig(DisableMod disableMod) {
+        try {
+            Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
+            Path disableModPath = installationRoot.resolve(disableMod.getFolder()).resolve(disableMod.getFileName());
+            if(Files.isRegularFile(disableModPath)) {
+                if(disableMod.shouldDelete()) {
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
+                        "CORE", "Deleting %s", disableModPath);
+                    Files.delete(disableModPath);
+                } else {
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
+                        "CORE", "Disabling %s", disableModPath);
+                    Files.move(disableModPath, disableModPath.resolveSibling(disableModPath.getFileName() + ".disabled-by-mod-director"));
+                }
+            }
+        } catch(IOException e) {
+            handleConfigException(e);
         }
     }
 

@@ -30,7 +30,8 @@ public abstract class ModDirectorRemoteMod {
                 null,
                 null,
                 false,
-                false
+                false,
+                null
         ) : installationPolicy;
         this.options = options == null ? Collections.emptyMap() : options;
         this.folder = folder;

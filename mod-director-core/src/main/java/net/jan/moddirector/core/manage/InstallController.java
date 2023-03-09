@@ -143,6 +143,15 @@ public class InstallController {
                     freshMods.add(installableMod);
                 }
 
+                if(!excludedMods.contains(mod) && mod.getInstallationPolicy().getSupersededFileName() != null) {
+                    Path supersededFile = targetFile.resolveSibling(mod.getInstallationPolicy().getSupersededFileName());
+                    if(Files.isRegularFile(supersededFile)) {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
+                            "CORE", "Superseding %s", targetFile);
+                        Files.move(supersededFile, supersededFile.resolveSibling(supersededFile.getFileName() + ".disabled-by-mod-director"));
+                    }
+                }
+
                 callback.done();
                 return null;
             });
