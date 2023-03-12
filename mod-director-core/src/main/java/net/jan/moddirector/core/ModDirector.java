@@ -19,12 +19,16 @@ import net.jan.moddirector.core.ui.page.ProgressPage;
 import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class ModDirector {
     private static ModDirector instance;
@@ -165,8 +169,9 @@ public class ModDirector {
         VersionMismatchDialog versionMismatchDialog = null;
 
         if(modpackConfiguration.remoteVersion() != null) {
-            try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion())) {
-                if(!response.getInputStream().toString().contains(modpackConfiguration.localVersion())) {
+            try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion());
+                BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
+                if(!reader.lines().collect(Collectors.joining()).contains(modpackConfiguration.localVersion())) {
                     logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
                         "Modpack version mismatch!");
                     if (!platform.headless()) {
