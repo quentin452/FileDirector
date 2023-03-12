@@ -88,28 +88,10 @@ public class ModDirector {
         List<ModDirectorRemoteMod> mods = configurationController.getConfigurations();
         ModpackConfiguration modpackConfiguration = configurationController.getModpackConfiguration();
 
-        VersionMismatchDialog versionMismatchDialog = null;
-
         if(modpackConfiguration == null) {
             logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE",
                     "This modpack does not contain a modpack.json, if you are the author, consider adding one!");
             modpackConfiguration = ModpackConfiguration.createDefault();
-        } else {
-            if(modpackConfiguration.remoteVersion() != null) {
-                try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion())) {
-                    if(!response.getInputStream().toString().contains(modpackConfiguration.localVersion())) {
-                        logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
-                            "Modpack version mismatch!");
-                        if (!platform.headless()) {
-                            versionMismatchDialog = new VersionMismatchDialog(modpackConfiguration);
-                        }
-                    }
-                }
-            }
-        }
-
-        if(versionMismatchDialog != null) {
-            versionMismatchDialog.dispose();
         }
 
         if(hasFatalError()) {
@@ -178,6 +160,24 @@ public class ModDirector {
 
         if(setupDialog != null) {
             setupDialog.dispose();
+        }
+
+        VersionMismatchDialog versionMismatchDialog = null;
+
+        if(modpackConfiguration.remoteVersion() != null) {
+            try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion())) {
+                if(!response.getInputStream().toString().contains(modpackConfiguration.localVersion())) {
+                    logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
+                        "Modpack version mismatch!");
+                    if (!platform.headless()) {
+                        versionMismatchDialog = new VersionMismatchDialog(modpackConfiguration);
+                    }
+                }
+            }
+        }
+
+        if(versionMismatchDialog != null) {
+            versionMismatchDialog.dispose();
         }
 
         return !hasFatalError();
