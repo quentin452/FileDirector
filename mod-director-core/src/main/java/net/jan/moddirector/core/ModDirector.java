@@ -14,8 +14,12 @@ import net.jan.moddirector.core.manage.ModDirectorError;
 import net.jan.moddirector.core.manage.select.InstallSelector;
 import net.jan.moddirector.core.platform.ModDirectorPlatform;
 import net.jan.moddirector.core.ui.SetupDialog;
+import net.jan.moddirector.core.ui.VersionMismatchDialog;
 import net.jan.moddirector.core.ui.page.ProgressPage;
+import net.jan.moddirector.core.util.WebClient;
+import net.jan.moddirector.core.util.WebGetResponse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -79,15 +83,33 @@ public class ModDirector {
         return nullProgressCallback;
     }
 
-    public boolean activate(long timeout, TimeUnit timeUnit) throws InterruptedException {
+    public boolean activate(long timeout, TimeUnit timeUnit) throws InterruptedException, IOException {
         configurationController.load();
         List<ModDirectorRemoteMod> mods = configurationController.getConfigurations();
         ModpackConfiguration modpackConfiguration = configurationController.getModpackConfiguration();
+
+        VersionMismatchDialog versionMismatchDialog = null;
 
         if(modpackConfiguration == null) {
             logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE",
                     "This modpack does not contain a modpack.json, if you are the author, consider adding one!");
             modpackConfiguration = ModpackConfiguration.createDefault();
+        } else {
+            if(modpackConfiguration.remoteVersion() != null) {
+                try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion())) {
+                    if(!response.getInputStream().toString().contains(modpackConfiguration.localVersion())) {
+                        logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
+                            "Modpack version mismatch!");
+                        if (!platform.headless()) {
+                            versionMismatchDialog = new VersionMismatchDialog(modpackConfiguration);
+                        }
+                    }
+                }
+            }
+        }
+
+        if(versionMismatchDialog != null) {
+            versionMismatchDialog.dispose();
         }
 
         if(hasFatalError()) {

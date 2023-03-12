@@ -7,6 +7,7 @@ import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -47,7 +48,7 @@ public class ModDirectorTweaker implements ITweaker {
             if(!director.activate(Long.MAX_VALUE, TimeUnit.DAYS)) {
                 director.errorExit();
             }
-        } catch(InterruptedException e) {
+        } catch(InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }
 

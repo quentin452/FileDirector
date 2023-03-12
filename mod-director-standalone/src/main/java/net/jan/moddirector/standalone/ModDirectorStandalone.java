@@ -2,10 +2,11 @@ package net.jan.moddirector.standalone;
 
 import net.jan.moddirector.core.ModDirector;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class ModDirectorStandalone {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         ModDirectorStandalonePlatform platform = new ModDirectorStandalonePlatform();
         ModDirector director = ModDirector.bootstrap(platform);
 
