@@ -77,10 +77,9 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
     public RemoteModInformation queryInformation() throws ModDirectorException {
         try {
             URL apiUrl = new URL(String.format("https://api.curse.tools/v1/cf/mods/%s/files/%s", addonId, fileId));
-            HttpURLConnection connection = (HttpURLConnection) apiUrl.openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.42");
+            WebGetResponse response = WebClient.get(apiUrl);
             JsonObject jsonObject;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
                 jsonObject = new JsonParser().parse(reader).getAsJsonObject().getAsJsonObject("data");
             }
             information = ConfigurationController.OBJECT_MAPPER.readValue(jsonObject.toString(), CurseAddonFileInformation.class);

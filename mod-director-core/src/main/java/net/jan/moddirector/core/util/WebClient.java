@@ -7,7 +7,7 @@ import java.net.URL;
 import java.net.URLConnection;
 
 public class WebClient {
-    public static final String USER_AGENT = "ModDirector v=1.3 (https://github.com/Janrupf/mod-director)";
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36";
 
     public static WebGetResponse get(URL url) throws IOException  {
         URLConnection connection = url.openConnection();
