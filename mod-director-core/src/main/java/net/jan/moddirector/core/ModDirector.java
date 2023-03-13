@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 public class ModDirector {
     private static ModDirector instance;
@@ -61,6 +60,7 @@ public class ModDirector {
     private final List<InstalledMod> installedMods;
     private final ExecutorService executorService;
     private final NullProgressCallback nullProgressCallback;
+    private String modpackRemoteVersion;
 
     private ModDirector(ModDirectorPlatform platform) {
         this.platform = platform;
@@ -75,6 +75,8 @@ public class ModDirector {
         this.executorService = Executors.newFixedThreadPool(4);
 
         this.nullProgressCallback = new NullProgressCallback();
+
+        this.modpackRemoteVersion = null;
 
         logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Mod director loaded!");
     }
@@ -96,6 +98,11 @@ public class ModDirector {
             logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE",
                     "This modpack does not contain a modpack.json, if you are the author, consider adding one!");
             modpackConfiguration = ModpackConfiguration.createDefault();
+        } else if(modpackConfiguration.remoteVersion() != null) {
+            try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion());
+                BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
+                modpackRemoteVersion = reader.readLine();
+            }
         }
 
         if(hasFatalError()) {
@@ -168,16 +175,11 @@ public class ModDirector {
 
         VersionMismatchDialog versionMismatchDialog = null;
 
-        if(modpackConfiguration.remoteVersion() != null) {
-            try(WebGetResponse response = WebClient.get(modpackConfiguration.remoteVersion());
-                BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
-                if(!reader.lines().collect(Collectors.joining()).contains(modpackConfiguration.localVersion())) {
-                    logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
-                        "Modpack version mismatch!");
-                    if (!platform.headless()) {
-                        versionMismatchDialog = new VersionMismatchDialog(modpackConfiguration);
-                    }
-                }
+        if(modpackConfiguration.remoteVersion() != null && modpackConfiguration.localVersion() != null && !modpackRemoteVersion.contains(modpackConfiguration.localVersion())) {
+            logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
+                "Modpack version mismatch!");
+            if (!platform.headless()) {
+                versionMismatchDialog = new VersionMismatchDialog(modpackConfiguration);
             }
         }
 
@@ -194,6 +196,14 @@ public class ModDirector {
 
     public ModDirectorPlatform getPlatform() {
         return platform;
+    }
+
+    public ConfigurationController getConfigurationController() {
+        return configurationController;
+    }
+
+    public String getModpackRemoteVersion() {
+        return modpackRemoteVersion;
     }
 
     public void addError(ModDirectorError error) {

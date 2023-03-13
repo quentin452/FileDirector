@@ -12,6 +12,7 @@ public class InstallationPolicy {
     private final boolean extract;
     private final boolean downloadAlways;
     private final String supersede;
+    private final String modpackVersion;
 
     @JsonCreator
     public InstallationPolicy(
@@ -22,7 +23,8 @@ public class InstallationPolicy {
             @JsonProperty(value = "description") String description,
             @JsonProperty(value = "extract") boolean extract,
             @JsonProperty(value = "downloadAlways") boolean downloadAlways,
-            @JsonProperty(value = "supersede") String supersede
+            @JsonProperty(value = "supersede") String supersede,
+            @JsonProperty(value = "modpackVersion") String modpackVersion
     ) {
         this.continueOnFailedDownload = continueOnFailedDownload;
         this.optionalKey = optionalKey;
@@ -32,6 +34,7 @@ public class InstallationPolicy {
         this.extract = extract;
         this.downloadAlways = downloadAlways;
         this.supersede = supersede;
+        this.modpackVersion = modpackVersion;
     }
 
     public boolean shouldContinueOnFailedDownload() {
@@ -64,5 +67,9 @@ public class InstallationPolicy {
 
     public String getSupersededFileName() {
         return supersede;
+    }
+
+    public String getModpackVersion() {
+        return modpackVersion;
     }
 }

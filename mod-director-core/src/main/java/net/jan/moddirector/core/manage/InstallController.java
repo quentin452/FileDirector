@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
 
@@ -86,13 +87,14 @@ public class InstallController {
                 }
 
                 Path disabledFile = computeDisabledPath(targetFile);
-                InstallableMod installableMod = new InstallableMod(mod, information, targetFile);
 
-                if(Files.isRegularFile(disabledFile)) {
+                if(Files.isRegularFile(disabledFile) || !isVersionCompliant(mod)) {
                     excludedMods.add(mod);
                     callback.done();
                     return null;
                 }
+
+                InstallableMod installableMod = new InstallableMod(mod, information, targetFile);
 
                 Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
                 Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
@@ -193,6 +195,21 @@ public class InstallController {
 
     private Path computeBansoukouDisabledPath(Path modFile) {
         return modFile.resolveSibling(modFile.getFileName().toString().replace(".jar",".disabled"));
+    }
+
+    private boolean isVersionCompliant(ModDirectorRemoteMod mod) {
+        String versionMod = mod.getInstallationPolicy().getModpackVersion();
+        String versionModpackRemote = director.getModpackRemoteVersion();
+        String versionModpackLocal = director.getConfigurationController().getModpackConfiguration().localVersion();
+
+        if(versionMod != null) {
+            if(versionModpackRemote != null) {
+                return Objects.equals(versionMod, versionModpackRemote);
+            } else if(versionModpackLocal != null) {
+                return Objects.equals(versionMod, versionModpackLocal);
+            }
+        }
+        return true;
     }
 
     public void markDisabledMods(List<InstallableMod> mods) {
