@@ -1,29 +1,26 @@
-# ModDirector
-###### Automatically download mods with ease!
+# File Director
+### Bringing a new era of modpack development!
 
-## About
-ModDirector is a small program and mod at the same time, which can be used to download files
-from the internet in a managed and controlled way. Sometimes it is not possible to ship files
-with a binary distribution due to copyright issues, but it is often possible to download these
-files and add them at runtime or first start. This is exactly what ModDirector does!
+## Introduction to File Director;
+- [File Director](https://curseforge.com/minecraft/mc-mods/filedirector) is a fork & continuation of [ModDirector](https://curseforge.com/minecraft/mc-mods/moddirector).
 
-## Overview
-Installing and configuring ModDirector is simple, just drag the jar into the mods folder and
-start minecraft. Currently, we only support Forge officially, but more are set to follow. 
-Technically, every mod which just relies on launchwrapper is currently supported, since
-ModDirector itself is independent of the target platform.
+- File Director aims to be a hassle-free tool for modpack creators, streamlining update processes for a more seamless experience. Allowing you to download files from the internet right into your modpack instance!
 
-### Configuration
-This is just meant to give you a quick overview, a more detailed guide can be found in the
-[wiki](https://github.com/Janrupf/mod-director/wiki).
+## What's different from Mod Director so-far?
+- File Director can once again download mods from CurseForge.
+- Bulk downloading several files at a time per configuration `bundle.json`, as opposed to having an `url.json` or `curse.json` for each & every mod or file.
+- Extracting .zip whole files instead of downloading individual files.
+- Force updating files.
+- Renaming files on download.
+- Remote modpack version number checking!
 
-ModDirector reads configurations from a config directory, which folder exactly depends on the
-platform. For Forge, it is `config/mod-director`. Configuration files should go into that
-directory, each of them ending with one of the supported suffixes.
+**[New functionalities are explained in the wiki!](https://github.com/TerraFirmaCraft-The-Final-Frontier/FileDirector/wiki)**
 
-## Using ModDirector in mod packs
-You don't have to ask for permission, but it would be nice to credit us, but also the authors
-of the mods you are downloading.
+## Usage of File Director in modpacks;
+- You don't need to request permission for usage of File Director in your modpacks/projects. Credit, where credit is due, would be appreciated though.
+- [CurseForge Mod Download](https://curseforge.com/minecraft/mc-mods/filedirector)
+- [Modrinth Mod Download](https://modrinth.com/mod/filedirector)
 
-In case you are creating a pack for curse forge, the mod can be found
-[here](https://www.curseforge.com/minecraft/mc-mods/moddirector)
+## Previews;
+
+[File Downloading Preview](https://raw.githubusercontent.com/TerraFirmaCraft-The-Final-Frontier/FileDirector/master/previews/file-director-preview.webp)
