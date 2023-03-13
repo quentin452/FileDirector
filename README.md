@@ -23,4 +23,4 @@
 
 ## Previews;
 
-[File Downloading Preview](https://raw.githubusercontent.com/TerraFirmaCraft-The-Final-Frontier/FileDirector/master/previews/file-director-preview.webp)
+![File Downloading Preview](https://raw.githubusercontent.com/TerraFirmaCraft-The-Final-Frontier/FileDirector/master/previews/file-director-preview.webp)
