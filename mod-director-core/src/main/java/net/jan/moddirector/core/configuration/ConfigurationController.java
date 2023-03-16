@@ -64,6 +64,7 @@ public class ConfigurationController {
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".json"))
                     .filter(p -> !p.getFileName().toString().equals("modpack.json"))
+                    .sorted()
                     .forEach(this::addConfig);
         } catch(IOException e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
