@@ -3,6 +3,7 @@ package net.jan.moddirector.core.manage;
 import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.configuration.ModDirectorRemoteMod;
 import net.jan.moddirector.core.configuration.RemoteModInformation;
+import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
 import net.jan.moddirector.core.exception.ModDirectorException;
 import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
 import net.jan.moddirector.core.manage.install.InstallableMod;
@@ -200,7 +201,12 @@ public class InstallController {
     private boolean isVersionCompliant(ModDirectorRemoteMod mod) {
         String versionMod = mod.getInstallationPolicy().getModpackVersion();
         String versionModpackRemote = director.getModpackRemoteVersion();
-        String versionModpackLocal = director.getConfigurationController().getModpackConfiguration().localVersion();
+
+        ModpackConfiguration modpackConfiguration = director.getConfigurationController().getModpackConfiguration();
+        String versionModpackLocal = null;
+        if(modpackConfiguration != null) {
+            versionModpackLocal = modpackConfiguration.localVersion();
+        }
 
         if(versionMod != null) {
             if(versionModpackRemote != null) {
