@@ -20,6 +20,7 @@ import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
 
 public class InstallController {
+    private static final String LOG_DOMAIN = "ModDirector/InstallController";
     private final ModDirector director;
 
     public InstallController(ModDirector director) {
@@ -69,7 +70,7 @@ public class InstallController {
                 try {
                     information = mod.queryInformation();
                 } catch(ModDirectorException e) {
-                    director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/InstallController",
+                    director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                             "CORE", e, "Failed to query information for %s from %s",
                             mod.offlineName(), mod.remoteType());
                     director.addError(new ModDirectorError(downloadSeverityLevelFor(mod),
@@ -105,7 +106,7 @@ public class InstallController {
 
                     switch(hashResult) {
                         case UNKNOWN:
-                            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "ModDirector/InstallController",
+                            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
                                     "CORE", "Skipping download of %s as hashes can't be determined but file exists",
                                     targetFile.toString());
                             callback.done();
@@ -114,7 +115,7 @@ public class InstallController {
                             return null;
 
                         case MATCHED:
-                            director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                                     "CORE", "Skipping download of %s as the hashes match", targetFile.toString());
                             callback.done();
 
@@ -122,7 +123,7 @@ public class InstallController {
                             return null;
 
                         case UNMATCHED:
-                            director.getLogger().log(ModDirectorSeverityLevel.WARN, "ModDirector/InstallController",
+                            director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
                                     "CORE", "File %s exists, but hashes do not match, downloading again!",
                                     targetFile.toString());
                     }
@@ -131,13 +132,13 @@ public class InstallController {
                     reinstallMods.add(installableMod);
 
                 } else if(mod.getInstallationPolicy().shouldDownloadAlways() && Files.isRegularFile(targetFile)) {
-                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                         "CORE", "Force downloading file %s as download always option is set.",
                         targetFile.toString());
                     reinstallMods.add(installableMod);
 
                 } else if(Files.isRegularFile(targetFile)) {
-                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "ModDirector/InstallController",
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
                             "CORE", "File %s exists and no metadata given, skipping download.",
                             targetFile.toString());
                     excludedMods.add(mod);
@@ -174,7 +175,7 @@ public class InstallController {
                 .toAbsolutePath().normalize();
 
         if(!targetFile.startsWith(installationRoot)) {
-            director.getLogger().log(ModDirectorSeverityLevel.ERROR, "ModDirector/InstallController",
+            director.getLogger().log(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", "Tried to install a file to %s, which is outside the installation root of %s!",
                     targetFile.toString(), director.getPlatform().installationRoot());
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
@@ -228,7 +229,7 @@ public class InstallController {
             } catch (IOException e) {
                 director.getLogger().logThrowable(
                         ModDirectorSeverityLevel.WARN,
-                        "ModDirector/InstallController",
+                        LOG_DOMAIN,
                         "CORE",
                         e,
                         "Failed to create disabled file, the user might be asked again if he wants to install the mod"
@@ -262,7 +263,7 @@ public class InstallController {
     private void handle(InstallableMod mod, ProgressCallback callback) {
         ModDirectorRemoteMod remoteMod = mod.getRemoteMod();
 
-        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "ModDirector/InstallController", "CORE",
+        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN, "CORE",
                 "Now handling %s from backend %s", remoteMod.offlineName(), remoteMod.remoteType());
 
         Path targetFile = mod.getTargetFile();
@@ -270,7 +271,7 @@ public class InstallController {
         try {
             Files.createDirectories(targetFile.getParent());
         } catch(IOException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/InstallController",
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", e, "Failed to create directory %s", targetFile.getParent().toString());
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
                     "Failed to create directory" + targetFile.getParent().toString(), e));
@@ -281,7 +282,7 @@ public class InstallController {
         try {
             mod.performInstall(director, callback);
         } catch(ModDirectorException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/InstallController",
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", e, "Failed to install mod %s", remoteMod.offlineName());
             director.addError(new ModDirectorError(downloadSeverityLevelFor(remoteMod),
                     "Failed to install mod "  + remoteMod.offlineName(), e));
@@ -290,16 +291,16 @@ public class InstallController {
         }
 
         if(remoteMod.getMetadata() != null && remoteMod.getMetadata().checkHashes(targetFile, director) == HashResult.UNMATCHED) {
-            director.getLogger().log(ModDirectorSeverityLevel.ERROR, "ModDirector/InstallController",
+            director.getLogger().log(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", "Mod did not match hash after download, aborting!");
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
                     "Mod did not match hash after download"));
         } else {
             if(remoteMod.getInstallationPolicy().shouldExtract()) {
-                director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                     "CORE", "Extracted mod file %s", targetFile.toString());
             } else {
-                director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/InstallController",
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                     "CORE", "Installed mod file %s", targetFile.toString());
             }
             director.installSuccess(new InstalledMod(targetFile, remoteMod.getOptions(), remoteMod.forceInject()));

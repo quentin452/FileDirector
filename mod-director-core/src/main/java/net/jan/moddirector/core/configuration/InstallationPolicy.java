@@ -10,6 +10,7 @@ public class InstallationPolicy {
     private final String name;
     private final String description;
     private final boolean extract;
+    private final boolean deleteAfterExtract;
     private final boolean downloadAlways;
     private final String supersede;
     private final String modpackVersion;
@@ -22,6 +23,7 @@ public class InstallationPolicy {
             @JsonProperty(value = "name") String name,
             @JsonProperty(value = "description") String description,
             @JsonProperty(value = "extract") boolean extract,
+            @JsonProperty(value = "deleteAfterExtract") boolean deleteAfterExtract,
             @JsonProperty(value = "downloadAlways") boolean downloadAlways,
             @JsonProperty(value = "supersede") String supersede,
             @JsonProperty(value = "modpackVersion") String modpackVersion
@@ -32,6 +34,7 @@ public class InstallationPolicy {
         this.name = name;
         this.description = description;
         this.extract = extract;
+        this.deleteAfterExtract = deleteAfterExtract;
         this.downloadAlways = downloadAlways;
         this.supersede = supersede;
         this.modpackVersion = modpackVersion;
@@ -59,6 +62,10 @@ public class InstallationPolicy {
 
     public boolean shouldExtract() {
         return extract;
+    }
+
+    public boolean shouldDeleteAfterExtract() {
+        return deleteAfterExtract;
     }
 
     public boolean shouldDownloadAlways() {

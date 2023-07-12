@@ -31,6 +31,7 @@ public abstract class ModDirectorRemoteMod {
                 null,
                 false,
                 false,
+                false,
                 null,
                 null
         ) : installationPolicy;

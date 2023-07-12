@@ -141,6 +141,9 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
                         zipEntry = zipInputStream.getNextEntry();
                     }
                 }
+                if (this.getInstallationPolicy().shouldDeleteAfterExtract()) {
+                    Files.delete(targetFile);
+                }
             }
         } catch(IOException e) {
             throw new ModDirectorException("Failed to write file to disk", e);
