@@ -13,7 +13,7 @@ public class ModifyMod {
 
     @JsonCreator
     public ModifyMod(
-        @JsonProperty(value = "fileName", required = true) String fileName,
+        @JsonProperty(value = "fileName") String fileName,
         @JsonProperty(value = "folder", required = true) String folder,
         @JsonProperty(value = "disable") boolean disable,
         @JsonProperty(value = "delete") boolean delete,
