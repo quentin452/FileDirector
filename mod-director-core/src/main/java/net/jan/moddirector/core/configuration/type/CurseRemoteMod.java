@@ -79,7 +79,7 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             WebGetResponse response = WebClient.get(apiUrl);
             JsonObject jsonObject;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
-                jsonObject = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("data");
+                jsonObject = new JsonParser().parse(reader).getAsJsonObject().getAsJsonObject("data");
             }
             information = ConfigurationController.OBJECT_MAPPER.readValue(jsonObject.toString(), CurseAddonFileInformation.class);
         } catch(MalformedURLException e) {

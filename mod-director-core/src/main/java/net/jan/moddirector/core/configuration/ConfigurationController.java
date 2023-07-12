@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
 import net.jan.moddirector.core.configuration.type.CurseRemoteMod;
-import net.jan.moddirector.core.configuration.type.DisableMod;
+import net.jan.moddirector.core.configuration.type.ModifyMod;
 import net.jan.moddirector.core.configuration.type.RemoteConfig;
 import net.jan.moddirector.core.configuration.type.UrlRemoteMod;
 import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
@@ -97,8 +97,8 @@ public class ConfigurationController {
             handleRemoteConfig(configurationPath);
         } else if(configString.endsWith(".bundle.json")) {
             handleBundleConfig(configurationPath);
-        } else if(configString.endsWith(".disable.json")) {
-            handleDisableConfig(configurationPath);
+        } else if(configString.endsWith(".modify.json")) {
+            handleModifyConfig(configurationPath);
         } else {
             handleSingleConfig(configurationPath);
         }
@@ -125,7 +125,7 @@ public class ConfigurationController {
     private void handleBundleConfig(Path configurationPath) {
         try(InputStream stream = Files.newInputStream(configurationPath);
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonObject jsonObject = new JsonParser().parse(reader).getAsJsonObject();
 
             JsonArray jsonArray = jsonObject.getAsJsonArray("curse");
             if(jsonArray != null) {
@@ -141,11 +141,11 @@ public class ConfigurationController {
                 }
             }
 
-            jsonArray = jsonObject.getAsJsonArray("disable");
+            jsonArray = jsonObject.getAsJsonArray("modify");
             if(jsonArray != null) {
                 for(JsonElement jsonElement : jsonArray) {
-                    DisableMod disableMod = OBJECT_MAPPER.readValue(jsonElement.toString(), DisableMod.class);
-                    handleDisableConfig(disableMod);
+                    ModifyMod modifyMod = OBJECT_MAPPER.readValue(jsonElement.toString(), ModifyMod.class);
+                    handleModifyConfig(modifyMod);
                 }
             }
         } catch(IOException e) {
@@ -165,36 +165,51 @@ public class ConfigurationController {
         }
     }
 
-    private void handleDisableConfig(Path configurationPath) {
+    private void handleModifyConfig(Path configurationPath) {
         try(InputStream stream = Files.newInputStream(configurationPath)) {
-            DisableMod disableMod = OBJECT_MAPPER.readValue(stream, DisableMod.class);
-            handleDisableConfig(disableMod);
+            ModifyMod modifyMod = OBJECT_MAPPER.readValue(stream, ModifyMod.class);
+            handleModifyConfig(modifyMod);
         } catch(IOException e) {
             handleConfigException(e);
         }
     }
 
-    private void handleDisableConfig(DisableMod disableMod) {
+    private void handleModifyConfig(ModifyMod modifyMod) {
         try {
             Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
-            Path disableModFolderPath = installationRoot.resolve(disableMod.getFolder());
-            if(disableMod.getFileName() == null) {
-                if(Files.isDirectory(disableModFolderPath) && disableMod.shouldDelete()) {
+            Path modifyModFolderPath = installationRoot.resolve(modifyMod.getFolder());
+            if(modifyMod.getFileName() == null) {
+                if(Files.isDirectory(modifyModFolderPath) && modifyMod.shouldDelete()) {
                     director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                            "CORE", "Deleting folder %s", disableModFolderPath);
-                    FileUtils.deleteDirectory(disableModFolderPath.toFile());
+                            "CORE", "Deleting folder %s", modifyModFolderPath);
+                    FileUtils.deleteDirectory(modifyModFolderPath.toFile());
                 }
             } else {
-                Path disableModFilePath = disableModFolderPath.resolve(disableMod.getFileName());
-                if(Files.isRegularFile(disableModFilePath)) {
-                    if(disableMod.shouldDelete()) {
+                Path modifyModFilePath = modifyModFolderPath.resolve(modifyMod.getFileName());
+                if(Files.isRegularFile(modifyModFilePath)) {
+                    if(modifyMod.shouldDisable()){
                         director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                "CORE", "Deleting file %s", disableModFilePath);
-                        Files.delete(disableModFilePath);
+                                "CORE", "Disabling file %s", modifyModFilePath);
+                        Files.move(modifyModFilePath, modifyModFilePath.resolveSibling(modifyMod.getFileName() + ".disabled-by-mod-director"));
+                    } else if(modifyMod.shouldDelete()) {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                "CORE", "Deleting file %s", modifyModFilePath);
+                        Files.delete(modifyModFilePath);
                     } else {
-                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                "CORE", "Disabling file %s", disableModFilePath);
-                        Files.move(disableModFilePath, disableModFilePath.resolveSibling(disableModFilePath.getFileName() + ".disabled-by-mod-director"));
+                        if(modifyMod.getNewFolder() != null) {
+                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                    "CORE", "Moving file %s", modifyModFilePath);
+                            modifyModFolderPath = installationRoot.resolve(modifyMod.getNewFolder());
+                            Files.createDirectories(modifyModFolderPath);
+                            Path modifyModNewFilePath = modifyModFolderPath.resolve(modifyMod.getFileName());
+                            Files.move(modifyModFilePath, modifyModNewFilePath);
+                            modifyModFilePath = modifyModNewFilePath;
+                        }
+                        if(modifyMod.getNewFileName() != null) {
+                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                    "CORE", "Renaming file %s", modifyModFilePath);
+                            Files.move(modifyModFilePath, modifyModFilePath.resolveSibling(modifyMod.getNewFileName()));
+                        }
                     }
                 }
             }
