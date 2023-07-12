@@ -2,4 +2,3 @@ rootProject.name = 'mod-director'
 include 'mod-director-core'
 include 'mod-director-standalone'
 include 'mod-director-launchwrapper'
-
