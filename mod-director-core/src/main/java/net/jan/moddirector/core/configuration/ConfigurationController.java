@@ -28,9 +28,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.commons.io.FileUtils;
 
 public class ConfigurationController {
     public static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
+    private static final String LOG_DOMAIN = "ModDirector/ConfigurationController";
 
     private static ObjectMapper createObjectMapper() {
         ObjectMapper instance = new ObjectMapper();
@@ -53,10 +55,8 @@ public class ConfigurationController {
 
     public void load() {
         Path modpackConfigPath = configurationDirectory.resolve("modpack.json");
-        if(Files.exists(modpackConfigPath)) {
-            if(!loadModpackConfiguration(modpackConfigPath)) {
+        if(Files.exists(modpackConfigPath) && !loadModpackConfiguration(modpackConfigPath)) {
                 return;
-            }
         }
 
         try(Stream<Path> paths = Files.walk(configurationDirectory)) {
@@ -67,7 +67,7 @@ public class ConfigurationController {
                     .sorted()
                     .forEach(this::addConfig);
         } catch(IOException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", e, "Failed to iterate configuration directory!");
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
                     "Failed to iterate configuration directory", e));
@@ -79,7 +79,7 @@ public class ConfigurationController {
             modpackConfiguration = OBJECT_MAPPER.readValue(stream, ModpackConfiguration.class);
             return true;
         } catch(IOException e) {
-            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                     "CORE", e, "Failed to read modpack configuration!");
             director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
                     "Failed to read modpack configuration!"));
@@ -90,7 +90,7 @@ public class ConfigurationController {
     private void addConfig(Path configurationPath) {
         String configString = configurationPath.toString();
 
-        director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
+        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                 "CORE", "Loading config %s", configString);
 
         if(configString.endsWith(".remote.json")) {
@@ -125,7 +125,7 @@ public class ConfigurationController {
     private void handleBundleConfig(Path configurationPath) {
         try(InputStream stream = Files.newInputStream(configurationPath);
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            JsonObject jsonObject = new JsonParser().parse(reader).getAsJsonObject();
+            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
 
             JsonArray jsonArray = jsonObject.getAsJsonArray("curse");
             if(jsonArray != null) {
@@ -177,16 +177,25 @@ public class ConfigurationController {
     private void handleDisableConfig(DisableMod disableMod) {
         try {
             Path installationRoot = director.getPlatform().installationRoot().toAbsolutePath().normalize();
-            Path disableModPath = installationRoot.resolve(disableMod.getFolder()).resolve(disableMod.getFileName());
-            if(Files.isRegularFile(disableModPath)) {
-                if(disableMod.shouldDelete()) {
-                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
-                        "CORE", "Deleting %s", disableModPath);
-                    Files.delete(disableModPath);
-                } else {
-                    director.getLogger().log(ModDirectorSeverityLevel.INFO, "ModDirector/ConfigurationController",
-                        "CORE", "Disabling %s", disableModPath);
-                    Files.move(disableModPath, disableModPath.resolveSibling(disableModPath.getFileName() + ".disabled-by-mod-director"));
+            Path disableModFolderPath = installationRoot.resolve(disableMod.getFolder());
+            if(disableMod.getFileName() == null) {
+                if(Files.isDirectory(disableModFolderPath) && disableMod.shouldDelete()) {
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                            "CORE", "Deleting folder %s", disableModFolderPath);
+                    FileUtils.deleteDirectory(disableModFolderPath.toFile());
+                }
+            } else {
+                Path disableModFilePath = disableModFolderPath.resolve(disableMod.getFileName());
+                if(Files.isRegularFile(disableModFilePath)) {
+                    if(disableMod.shouldDelete()) {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                "CORE", "Deleting file %s", disableModFilePath);
+                        Files.delete(disableModFilePath);
+                    } else {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                "CORE", "Disabling file %s", disableModFilePath);
+                        Files.move(disableModFilePath, disableModFilePath.resolveSibling(disableModFilePath.getFileName() + ".disabled-by-mod-director"));
+                    }
                 }
             }
         } catch(IOException e) {
@@ -195,7 +204,7 @@ public class ConfigurationController {
     }
 
     private void handleConfigException(IOException e) {
-        director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ConfigurationController",
+        director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
             "CORE", e, "Failed to " + (e instanceof JsonParseException ? "parse" : "open") + " a configuration for reading!");
         director.addError(new ModDirectorError(ModDirectorSeverityLevel.ERROR,
             "Failed to " + (e instanceof JsonParseException ? "parse" : "open") + " a configuration for reading", e));
@@ -208,7 +217,7 @@ public class ConfigurationController {
         } else if(name.endsWith(".url.json")) {
             return UrlRemoteMod.class;
         } else {
-            director.getLogger().log(ModDirectorSeverityLevel.WARN, "ModDirector/ConfigurationController",
+            director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
                     "CORE", "Ignoring unknown json file %s", name);
             return null;
         }

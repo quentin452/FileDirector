@@ -3,7 +3,6 @@ package net.jan.moddirector.core.configuration.type;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -80,7 +79,7 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             WebGetResponse response = WebClient.get(apiUrl);
             JsonObject jsonObject;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
-                jsonObject = new JsonParser().parse(reader).getAsJsonObject().getAsJsonObject("data");
+                jsonObject = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("data");
             }
             information = ConfigurationController.OBJECT_MAPPER.readValue(jsonObject.toString(), CurseAddonFileInformation.class);
         } catch(MalformedURLException e) {
