@@ -128,6 +128,13 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
                     while(zipEntry != null) {
                         Path newFilePath = Paths.get(targetFile.getParent().toString(), zipEntry.getName());
                         if(!zipEntry.isDirectory()) {
+                            if(Files.exists(newFilePath)) {
+                                Path disabledFilePath = newFilePath.resolveSibling(zipEntry.getName() + ".disabled-by-mod-director");
+                                if(Files.exists(disabledFilePath)) {
+                                    Files.delete(disabledFilePath);
+                                }
+                                Files.move(newFilePath, disabledFilePath);
+                            }
                             progressCallback.message("Unzipping " + newFilePath.getFileName());
                             try(FileOutputStream fileOutputStream = new FileOutputStream(newFilePath.toFile())) {
                                 int length;

@@ -196,19 +196,30 @@ public class ConfigurationController {
                                 "CORE", "Deleting file %s", modifyModFilePath);
                         Files.delete(modifyModFilePath);
                     } else {
+                        Path modifyModNewFilePath = null;
                         if(modifyMod.getNewFolder() != null) {
                             director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                                     "CORE", "Moving file %s", modifyModFilePath);
                             modifyModFolderPath = installationRoot.resolve(modifyMod.getNewFolder());
                             Files.createDirectories(modifyModFolderPath);
-                            Path modifyModNewFilePath = modifyModFolderPath.resolve(modifyMod.getFileName());
-                            Files.move(modifyModFilePath, modifyModNewFilePath);
-                            modifyModFilePath = modifyModNewFilePath;
+                            modifyModNewFilePath = modifyModFolderPath.resolve(modifyMod.getFileName());
                         }
                         if(modifyMod.getNewFileName() != null) {
                             director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
                                     "CORE", "Renaming file %s", modifyModFilePath);
-                            Files.move(modifyModFilePath, modifyModFilePath.resolveSibling(modifyMod.getNewFileName()));
+                            modifyModNewFilePath = modifyModNewFilePath != null // Moved before?
+                                    ? modifyModNewFilePath.resolveSibling(modifyMod.getNewFileName()) // Yes -> Use new folder
+                                    : modifyModFilePath.resolveSibling(modifyMod.getNewFileName()); // No -> Use old folder
+                        }
+                        if(modifyModNewFilePath != null) {
+                            if(Files.exists(modifyModNewFilePath)) {
+                                Path disabledFilePath = modifyModNewFilePath.resolveSibling(modifyModNewFilePath.getFileName() + ".disabled-by-mod-director");
+                                if(Files.exists(disabledFilePath)) {
+                                    Files.delete(disabledFilePath);
+                                }
+                                Files.move(modifyModNewFilePath, disabledFilePath);
+                            }
+                            Files.move(modifyModFilePath, modifyModNewFilePath);
                         }
                     }
                 }
