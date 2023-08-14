@@ -55,7 +55,7 @@ public class StopModReposts {
         }
     }
 
-    private static void initialize(ModDirector director) throws ModDirectorException {
+    private static void initialize(ModDirector director) {
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, "StopModReposts", "CORE",
             "Initializing StopModReposts module");
 
@@ -69,7 +69,8 @@ public class StopModReposts {
             throw new RuntimeException(
                 "https://api.stopmodreposts.org/sites.json seems to be an invalid URL?", e);
         } catch(IOException e) {
-            throw new ModDirectorException("Failed to retrieve StopModReposts database", e);
+            director.getLogger().log(ModDirectorSeverityLevel.ERROR, "StopModReposts", "CORE",
+                    "Failed to retrieve StopModReposts database");
         }
 
         INITIALIZED.set(true);
