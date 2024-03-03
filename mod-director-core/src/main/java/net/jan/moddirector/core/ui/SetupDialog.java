@@ -10,7 +10,7 @@ import java.awt.*;
 import java.util.concurrent.CountDownLatch;
 
 public class SetupDialog extends JDialog {
-    private static final int HEIGHT = 400;
+    private static final int HEIGHT = 500;
     private static final int WIDTH = (int) (HEIGHT * /* golden ratio */ 1.618);
 
     private final ModpackConfiguration configuration;
@@ -22,7 +22,7 @@ public class SetupDialog extends JDialog {
         this.configuration = configuration;
 
         this.nextButton = new JButton("Next");
-        this.nextButton.addActionListener((e) -> nextLatch.countDown());
+        this.nextButton.addActionListener(e -> nextLatch.countDown());
 
         setTitle(configuration.packName());
         setSize(WIDTH, HEIGHT);
@@ -51,17 +51,17 @@ public class SetupDialog extends JDialog {
         scrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT - 55));
         wrapperPanel.add(scrollPane);
 
-        JPanel creditsPanel = new JPanel();
-        creditsPanel.setMaximumSize(new Dimension(WIDTH, 30));
-        creditsPanel.setLayout(new BorderLayout());
+        JPanel consentPanel = new JPanel();
+        consentPanel.setMaximumSize(new Dimension(WIDTH, 30));
+        consentPanel.setLayout(new BorderLayout());
 
         wrapperPanel.add(Box.createVerticalStrut(5));
 
-        creditsPanel.add(new JLabel("Powered by ModDirector"), BorderLayout.WEST);
-        wrapperPanel.add(creditsPanel);
+        consentPanel.add(new JLabel("By checking the boxes above, you give consent to download the respective files!"), BorderLayout.WEST);
+        wrapperPanel.add(consentPanel);
 
         if(hasNextButton) {
-            creditsPanel.add(nextButton, BorderLayout.EAST);
+            consentPanel.add(nextButton, BorderLayout.EAST);
             nextButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
             nextLatch = new CountDownLatch(1);
         } else {

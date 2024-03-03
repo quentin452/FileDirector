@@ -57,7 +57,7 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
 
     @Override
     public String offlineName() {
-        return addonId + ":" + fileId;
+        return "Project ID: " + addonId + ", File ID: " + fileId;
     }
 
     @Override

@@ -58,23 +58,20 @@ public class InstallSelector {
             ModDirectorRemoteMod remoteMod = mod.getRemoteMod();
             if(remoteMod != null) {
                 InstallationPolicy policy = remoteMod.getInstallationPolicy();
-                if(policy != null) {
-                    String optionalKey = policy.getOptionalKey();
-                    if(optionalKey == null) {
-                        alwaysInstall.add(mod);
-                    } else if(!ignoredGroups.contains(optionalKey)) {
-                        SelectableInstallOption installOption = new SelectableInstallOption(
-                                policy.isSelectedByDefault(),
-                                policy.getName() == null ? remoteMod.offlineName() : policy.getName(),
-                                policy.getDescription()
-                        );
-                        if(optionalKey.equals("$")) {
-                            singleOptions.add(installOption);
-                        } else {
-                            groupOptions.computeIfAbsent(optionalKey, k -> new ArrayList<>()).add(installOption);
-                        }
-                        optionsToMod.put(installOption, mod);
+                String optionalKey = policy == null ? "$" : policy.getOptionalKey();
+                if(!ignoredGroups.contains(optionalKey)) {
+                    SelectableInstallOption installOption = new SelectableInstallOption(
+                            policy == null || optionalKey == null || policy.isSelectedByDefault(),
+                            policy == null || policy.getName() == null ? remoteMod.offlineName() : policy.getName() + " - " + remoteMod.offlineName(),
+                            policy == null ? "" : policy.getDescription(),
+                            policy == null || remoteMod.remoteType() == null ? "Unknown" : remoteMod.remoteType()
+                    );
+                    if(optionalKey == null || optionalKey.equals("$")) {
+                        singleOptions.add(installOption);
+                    } else {
+                        groupOptions.computeIfAbsent(optionalKey, k -> new ArrayList<>()).add(installOption);
                     }
+                    optionsToMod.put(installOption, mod);
                 }
             }
         }

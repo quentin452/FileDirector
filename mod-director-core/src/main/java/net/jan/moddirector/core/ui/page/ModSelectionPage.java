@@ -11,7 +11,7 @@ public class ModSelectionPage extends JPanel {
     public ModSelectionPage(InstallSelector selector) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        JLabel titleLabel = new JLabel("Select mods to install", SwingConstants.CENTER);
+        JLabel titleLabel = new JLabel("Select files to download", SwingConstants.CENTER);
         titleLabel.setFont(new Font(titleLabel.getFont().getName(), Font.BOLD, 20));
         titleLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, titleLabel.getMinimumSize().height));
         add(titleLabel);
@@ -21,19 +21,19 @@ public class ModSelectionPage extends JPanel {
     }
 
     private void setupSingleOption(SelectableInstallOption option) {
-        JPanel optionPanel = new JPanel();
+        String borderText = option.getSource().startsWith("http") ? "URL" : option.getSource();
+        JPanel optionPanel = new JPanel(new BorderLayout());
         optionPanel.setLayout(new BoxLayout(optionPanel, BoxLayout.Y_AXIS));
+        optionPanel.setBorder(BorderFactory.createTitledBorder(borderText));
 
-        JCheckBox installCheckBox = new JCheckBox("Install");
-        installCheckBox.setSelected(option.isSelected());
-        installCheckBox.addItemListener((e) -> option.setSelected(installCheckBox.isSelected()));
+        String checkboxText = option.getSource().startsWith("http") ? option.getSource() : option.getName();
+        JCheckBox installCheckBox = new JCheckBox(checkboxText, option.isSelected());
+        installCheckBox.addItemListener(e -> option.setSelected(installCheckBox.isSelected()));
         optionPanel.add(installCheckBox);
 
         if(option.getDescription() != null) {
             optionPanel.add(new JLabel(asHtml(option.getDescription())));
         }
-
-        optionPanel.setBorder(BorderFactory.createTitledBorder(option.getName()));
 
         add(optionPanel);
     }
@@ -50,7 +50,7 @@ public class ModSelectionPage extends JPanel {
 
             JRadioButton installRadioButton = new JRadioButton(option.getName());
             installRadioButton.setSelected(option.isSelected());
-            installRadioButton.addItemListener((e) -> option.setSelected(installRadioButton.isSelected()));
+            installRadioButton.addItemListener(e -> option.setSelected(installRadioButton.isSelected()));
             group.add(installRadioButton);
             optionPanel.add(installRadioButton);
 
