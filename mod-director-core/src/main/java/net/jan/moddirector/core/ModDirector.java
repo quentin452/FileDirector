@@ -18,6 +18,7 @@ import net.jan.moddirector.core.ui.VersionMismatchDialog;
 import net.jan.moddirector.core.ui.page.ProgressPage;
 import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
+import net.minecraftforge.fml.exit.QualifiedExit;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -240,7 +241,7 @@ public class ModDirector {
         });
         logger.log(ModDirectorSeverityLevel.ERROR, "ModDirector", "CORE",
                 "============================================================");
-        System.exit(1);
+        QualifiedExit.exit(1);
     }
 
     private void awaitAll(List<Future<Void>> futures) throws InterruptedException {
