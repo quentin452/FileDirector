@@ -48,8 +48,7 @@ public class ModSelectionPage extends JPanel {
             JPanel optionPanel = new JPanel();
             optionPanel.setLayout(new BoxLayout(optionPanel, BoxLayout.Y_AXIS));
 
-            JRadioButton installRadioButton = new JRadioButton(option.getName());
-            installRadioButton.setSelected(option.isSelected());
+            JRadioButton installRadioButton = new JRadioButton(option.getName(), option.isSelected());
             installRadioButton.addItemListener(e -> option.setSelected(installRadioButton.isSelected()));
             group.add(installRadioButton);
             optionPanel.add(installRadioButton);

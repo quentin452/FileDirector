@@ -10,7 +10,7 @@ import java.awt.*;
 import java.util.concurrent.CountDownLatch;
 
 public class SetupDialog extends JDialog {
-    private static final int HEIGHT = 500;
+    private static final int HEIGHT = 600;
     private static final int WIDTH = (int) (HEIGHT * /* golden ratio */ 1.618);
 
     private final ModpackConfiguration configuration;
@@ -39,20 +39,14 @@ public class SetupDialog extends JDialog {
     }
 
     private <T extends JPanel> T updateContent(T newContent, boolean hasNextButton) {
-        newContent.setPreferredSize(new Dimension(WIDTH - 30, 0));
-        newContent.setMaximumSize(new Dimension(WIDTH - 30, Integer.MAX_VALUE));
-
         JPanel wrapperPanel = new JPanel();
         wrapperPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         wrapperPanel.setLayout(new BoxLayout(wrapperPanel, BoxLayout.PAGE_AXIS));
 
         JScrollPane scrollPane = new JScrollPane(newContent);
-        scrollPane.setSize(WIDTH, HEIGHT - 30);
-        scrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT - 55));
         wrapperPanel.add(scrollPane);
 
         JPanel consentPanel = new JPanel();
-        consentPanel.setMaximumSize(new Dimension(WIDTH, 30));
         consentPanel.setLayout(new BorderLayout());
 
         wrapperPanel.add(Box.createVerticalStrut(5));
@@ -67,8 +61,6 @@ public class SetupDialog extends JDialog {
         } else {
             nextLatch = null;
         }
-
-        wrapperPanel.setSize(WIDTH, HEIGHT);
 
         setContentPane(wrapperPanel);
         revalidate();
