@@ -47,6 +47,7 @@ public class SetupDialog extends JDialog {
         wrapperPanel.add(scrollPane);
 
         JPanel consentPanel = new JPanel();
+        consentPanel.setMaximumSize(new Dimension(WIDTH, 30));
         consentPanel.setLayout(new BorderLayout());
 
         wrapperPanel.add(Box.createVerticalStrut(5));
