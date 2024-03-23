@@ -19,10 +19,9 @@ import net.jan.moddirector.core.ui.page.ProgressPage;
 import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
 import net.minecraftforge.fml.exit.QualifiedExit;
+import org.apache.commons.io.FileUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,6 +77,16 @@ public class ModDirector {
         this.nullProgressCallback = new NullProgressCallback();
 
         this.modpackRemoteVersion = null;
+
+        try (InputStream is = this.getClass().getResource("/cacerts").openStream()) {
+            File cacertsCopy = File.createTempFile("cacerts", "");
+            cacertsCopy.deleteOnExit();
+            FileUtils.copyInputStreamToFile(is, cacertsCopy);
+            System.setProperty("javax.net.ssl.trustStore", cacertsCopy.getAbsolutePath());
+            logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE", "Successfully replaced CA certificates with updated ones!");
+        } catch (IOException e) {
+            logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE", "Unable to replace CA certificates!");
+        }
 
         logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Mod director loaded!");
     }
