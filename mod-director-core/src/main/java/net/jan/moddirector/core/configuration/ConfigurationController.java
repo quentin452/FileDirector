@@ -17,6 +17,7 @@ import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
 
 import java.io.*;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -116,6 +117,9 @@ public class ConfigurationController {
                 Files.write(remoteConfigPath, outputStream.toByteArray());
                 addConfig(remoteConfigPath);
                 Files.delete(remoteConfigPath);
+            } catch(UnknownHostException e) {
+                director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
+                        "CORE", e, "Failed to resolve URL %s, skipping remote config...", remoteConfig.getUrl());
             }
         } catch(IOException e) {
             handleConfigException(e);
