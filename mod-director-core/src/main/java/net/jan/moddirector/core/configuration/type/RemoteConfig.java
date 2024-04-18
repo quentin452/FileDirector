@@ -11,7 +11,8 @@ public class RemoteConfig
 
     @JsonCreator
     public RemoteConfig(
-        @JsonProperty(value = "url", required = true) URL url
+        @JsonProperty(value = "url", required = true) URL url,
+        @JsonProperty(value = "comment") String comment
     ) {
         this.url = url;
     }

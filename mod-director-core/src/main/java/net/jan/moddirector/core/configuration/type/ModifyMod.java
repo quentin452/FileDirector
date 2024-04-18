@@ -18,7 +18,8 @@ public class ModifyMod {
         @JsonProperty(value = "disable") boolean disable,
         @JsonProperty(value = "delete") boolean delete,
         @JsonProperty(value = "newFolder") String newFolder,
-        @JsonProperty(value = "newFileName") String newFileName
+        @JsonProperty(value = "newFileName") String newFileName,
+        @JsonProperty(value = "comment") String comment
     ) {
         this.fileName = fileName;
         this.folder = folder;

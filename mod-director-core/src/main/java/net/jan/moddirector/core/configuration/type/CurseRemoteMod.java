@@ -42,7 +42,8 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             @JsonProperty(value = "options") Map<String, Object> options,
             @JsonProperty(value = "folder") String folder,
             @JsonProperty(value = "inject") Boolean inject,
-            @JsonProperty(value = "fileName") String fileName
+            @JsonProperty(value = "fileName") String fileName,
+            @JsonProperty(value = "comment") String comment
             ) {
         super(metadata, installationPolicy, options, folder, inject);
         this.addonId = addonId;

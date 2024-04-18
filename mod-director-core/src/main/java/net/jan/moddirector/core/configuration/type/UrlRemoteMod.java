@@ -38,7 +38,8 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
             @JsonProperty(value = "installationPolicy") InstallationPolicy installationPolicy,
             @JsonProperty(value = "options") Map<String, Object> options,
             @JsonProperty(value = "folder") String folder,
-            @JsonProperty(value = "inject") Boolean inject
+            @JsonProperty(value = "inject") Boolean inject,
+            @JsonProperty(value = "comment") String comment
     ) {
         super(metadata, installationPolicy, options, folder, inject);
         this.fileName = fileName;
