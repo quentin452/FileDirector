@@ -84,7 +84,7 @@ public class ModDirector {
             FileUtils.copyInputStreamToFile(is, cacertsCopy);
             System.setProperty("javax.net.ssl.trustStore", cacertsCopy.getAbsolutePath());
             logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE", "Successfully replaced CA certificates with updated ones!");
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.log(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE", "Unable to replace CA certificates!");
         }
 
