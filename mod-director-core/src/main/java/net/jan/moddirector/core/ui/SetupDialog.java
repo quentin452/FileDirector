@@ -19,6 +19,8 @@ public class SetupDialog extends JDialog {
     private CountDownLatch nextLatch;
 
     public SetupDialog(ModpackConfiguration configuration) {
+        super((Dialog) null);
+
         this.configuration = configuration;
 
         this.nextButton = new JButton("Next");
@@ -26,6 +28,7 @@ public class SetupDialog extends JDialog {
 
         setTitle(configuration.packName());
         setSize(WIDTH, HEIGHT);
+        setAlwaysOnTop(true);
     }
 
     public ProgressPage navigateToProgressPage(String title) {
