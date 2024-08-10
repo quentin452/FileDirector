@@ -1,5 +1,20 @@
 package net.jan.moddirector.core.configuration.type;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.jan.moddirector.core.ModDirector;
+import net.jan.moddirector.core.configuration.*;
+import net.jan.moddirector.core.exception.ModDirectorException;
+import net.jan.moddirector.core.manage.ProgressCallback;
+import net.jan.moddirector.core.util.IOOperation;
+import net.jan.moddirector.core.util.WebClient;
+import net.jan.moddirector.core.util.WebGetResponse;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,22 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import net.jan.moddirector.core.ModDirector;
-import net.jan.moddirector.core.configuration.*;
-import net.jan.moddirector.core.exception.ModDirectorException;
-import net.jan.moddirector.core.manage.ProgressCallback;
-import net.jan.moddirector.core.util.IOOperation;
-import net.jan.moddirector.core.util.WebClient;
-import net.jan.moddirector.core.util.WebGetResponse;
 
 public class CurseRemoteMod extends ModDirectorRemoteMod {
     private final int addonId;
@@ -80,17 +79,17 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
             WebGetResponse response = WebClient.get(apiUrl);
             JsonObject jsonObject;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
-                jsonObject = new JsonParser().parse(reader).getAsJsonObject().getAsJsonObject("data");
+                jsonObject = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("data");
             }
             information = ConfigurationController.OBJECT_MAPPER.readValue(jsonObject.toString(), CurseAddonFileInformation.class);
-        } catch(MalformedURLException e) {
-            throw new ModDirectorException("Failed to create curse.tools api url", e);
-        } catch(JsonParseException e) {
-            throw new ModDirectorException("Failed to parse Json response from curse", e);
-        } catch(JsonMappingException e) {
-            throw new ModDirectorException("Failed to map Json response from curse, did they change their api?", e);
-        } catch(IOException e) {
-            throw new ModDirectorException("Failed to open connection to curse", e);
+        } catch (MalformedURLException e) {
+            throw new ModDirectorException("Failed to create Curse API URL", e);
+        } catch (JsonParseException e) {
+            throw new ModDirectorException("Failed to parse JSON response from Curse", e);
+        } catch (JsonMappingException e) {
+            throw new ModDirectorException("Failed to map JSON response from Curse, did they change their API?", e);
+        } catch (IOException e) {
+            throw new ModDirectorException("Failed to open connection to Curse", e);
         }
 
         if(fileName != null) {
@@ -110,8 +109,5 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
 
         @JsonProperty
         private URL downloadUrl;
-
-        @JsonProperty
-        private String[] gameVersions;
     }
 }
