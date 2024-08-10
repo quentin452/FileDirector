@@ -6,10 +6,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
-import net.jan.moddirector.core.configuration.type.CurseRemoteMod;
-import net.jan.moddirector.core.configuration.type.ModifyMod;
-import net.jan.moddirector.core.configuration.type.RemoteConfig;
-import net.jan.moddirector.core.configuration.type.UrlRemoteMod;
+import net.jan.moddirector.core.configuration.type.*;
 import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
 import net.jan.moddirector.core.manage.ModDirectorError;
 import net.jan.moddirector.core.util.IOOperation;
@@ -138,6 +135,13 @@ public class ConfigurationController {
                 }
             }
 
+            jsonArray = jsonObject.getAsJsonArray("modrinth");
+            if(jsonArray != null) {
+                for(JsonElement jsonElement : jsonArray) {
+                    configurations.add(OBJECT_MAPPER.readValue(jsonElement.toString(), ModrinthRemoteMod.class));
+                }
+            }
+
             jsonArray = jsonObject.getAsJsonArray("url");
             if(jsonArray != null) {
                 for(JsonElement jsonElement : jsonArray) {
@@ -244,6 +248,8 @@ public class ConfigurationController {
         String name = file.toString();
         if(name.endsWith(".curse.json")) {
             return CurseRemoteMod.class;
+        } else if(name.endsWith(".modrinth.json")) {
+            return ModrinthRemoteMod.class;
         } else if(name.endsWith(".url.json")) {
             return UrlRemoteMod.class;
         } else {
