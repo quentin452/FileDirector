@@ -11,6 +11,7 @@ import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
 import net.jan.moddirector.core.manage.ModDirectorError;
 import net.jan.moddirector.core.util.WebClient;
 import net.jan.moddirector.core.util.WebGetResponse;
+import net.jan.moddirector.core.configuration.WarningDisplay;
 
 import java.io.*;
 import java.net.UnknownHostException;
@@ -102,7 +103,7 @@ public class ConfigurationController {
             handleSingleConfig(configurationPath);
         }
     }
-
+    
     private void safeDelete(Path file) {
         int attempts = 5;
         while (attempts-- > 0) {
@@ -111,18 +112,31 @@ public class ConfigurationController {
                 return;
             } catch (FileSystemException e) {
                 if (attempts == 0) {
+                    String message = String.format("Could not delete file %s after multiple attempts: %s",
+                    		file.getFileName(), e.getMessage());
+
                     director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
-                            "CORE", "Could not delete file %s after multiple attempts: %s",
-                            file, e.getMessage());
-                    return; // Don't crash!
+                            "CORE", message);
+
+                    WarningDisplay.show("The mod \"" + file.getFileName() + "\" could not be deleted.\n\n" +
+                            "It may be locked by another process (e.g., Minecraft).\n\n" +
+                            "Press OK to continue.\n\nReason: " + e.getMessage());
+
+                    return;
                 }
+
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException ignored) {}
             } catch (IOException e) {
-                // log other IO errors too
-                director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
-                        "CORE", e, "Failed to delete file %s", file);
+                String message = String.format("Unexpected IO error deleting file %s: %s", file.getFileName(), e.getMessage());
+
+                director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                        "CORE", message);
+
+                WarningDisplay.show("The mod \"" + file.getFileName() + "\" could not be deleted due to an unexpected error.\n\n" +
+                        "Press OK to continue.\n\nReason: " + e.getMessage());
+
                 return;
             }
         }
