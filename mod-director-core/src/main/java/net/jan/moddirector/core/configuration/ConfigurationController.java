@@ -280,10 +280,14 @@ public class ConfigurationController {
                         if (modifyMod.getNewFolder() != null) {
                             Path newFolder = installationRoot.resolve(modifyMod.getNewFolder());
                             Files.createDirectories(newFolder);
+                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                    "CORE", "Moving file %s", modifyModFilePath);
                             targetPath = newFolder.resolve(modifyMod.getFileName());
                         }
 
                         if (modifyMod.getNewFileName() != null) {
+                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                    "CORE", "Renaming file %s", modifyModFilePath);
                             targetPath = (targetPath != null)
                                     ? targetPath.resolveSibling(modifyMod.getNewFileName())
                                     : modifyModFilePath.resolveSibling(modifyMod.getNewFileName());
