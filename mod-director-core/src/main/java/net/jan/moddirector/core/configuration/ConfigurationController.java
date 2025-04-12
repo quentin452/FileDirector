@@ -142,14 +142,31 @@ public class ConfigurationController {
         }
     }
 
-    private void safeModify(IOOperation action) throws IOException {
+    private void safeModify(IOOperation action, String contextDescription, Path sourcePath, Path targetPath) {
         int attempts = 5;
         while (attempts-- > 0) {
             try {
                 action.run();
                 return;
             } catch (IOException e) {
-                if (attempts == 0) throw e;
+                if (attempts == 0) {
+
+                    String message = String.format(
+                    	    "ERROR: Failed to perform operation: %s\n\n" +
+                    	    "Source:\n  %s\n\n" +
+                    	    "Target:\n  %s\n\n" +
+                    	    "Reason:\n  %s",
+                    	    contextDescription,
+                    	    sourcePath,
+                    	    targetPath != null ? targetPath : "(unknown)",
+                    	    e.getMessage()
+                    	);
+
+                    director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN, "CORE", message);
+
+                    WarningDisplay.show(message);
+                    return;
+                }
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException ignored) {}
@@ -252,55 +269,58 @@ public class ConfigurationController {
             }
         } else {
             Path modifyModFilePath = modifyModFolderPath.resolve(modifyMod.getFileName());
+            Path targetPath = null;
 
             try {
-                safeModify(() -> {
-                    if (Files.isRegularFile(modifyModFilePath)) {
-                        if (modifyMod.shouldDisable()) {
-                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                    "CORE", "Disabling file %s", modifyModFilePath);
-                            Files.move(modifyModFilePath, modifyModFilePath.resolveSibling(
-                                    modifyMod.getFileName() + ".disabled-by-mod-director"));
-                        } else if (modifyMod.shouldDelete()) {
-                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                    "CORE", "Deleting file %s", modifyModFilePath);
-                            safeDelete(modifyModFilePath);
-                        } else {
-                            Path modifyModNewFilePath = null;
+                if (Files.isRegularFile(modifyModFilePath)) {
+                    if (modifyMod.shouldDisable()) {
+                        targetPath = modifyModFilePath.resolveSibling(modifyMod.getFileName() + ".disabled-by-mod-director");
 
-                            if (modifyMod.getNewFolder() != null) {
-                                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                        "CORE", "Moving file %s", modifyModFilePath);
-                                Path newFolder = installationRoot.resolve(modifyMod.getNewFolder());
-                                Files.createDirectories(newFolder);
-                                modifyModNewFilePath = newFolder.resolve(modifyMod.getFileName());
-                            }
+                    } else if (!modifyMod.shouldDelete()) {
+                        if (modifyMod.getNewFolder() != null) {
+                            Path newFolder = installationRoot.resolve(modifyMod.getNewFolder());
+                            Files.createDirectories(newFolder);
+                            targetPath = newFolder.resolve(modifyMod.getFileName());
+                        }
 
-                            if (modifyMod.getNewFileName() != null) {
-                                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                        "CORE", "Renaming file %s", modifyModFilePath);
-                                modifyModNewFilePath = (modifyModNewFilePath != null)
-                                        ? modifyModNewFilePath.resolveSibling(modifyMod.getNewFileName())
-                                        : modifyModFilePath.resolveSibling(modifyMod.getNewFileName());
-                            }
-
-                            if (modifyModNewFilePath != null) {
-                                if (Files.exists(modifyModNewFilePath)) {
-                                    Path disabledFilePath = modifyModNewFilePath.resolveSibling(
-                                            modifyModNewFilePath.getFileName() + ".disabled-by-mod-director");
-                                    if (Files.exists(disabledFilePath)) {
-                                        safeDelete(disabledFilePath);
-                                    }
-                                    Files.move(modifyModNewFilePath, disabledFilePath);
-                                }
-                                Files.move(modifyModFilePath, modifyModNewFilePath);
-                            }
+                        if (modifyMod.getNewFileName() != null) {
+                            targetPath = (targetPath != null)
+                                    ? targetPath.resolveSibling(modifyMod.getNewFileName())
+                                    : modifyModFilePath.resolveSibling(modifyMod.getNewFileName());
                         }
                     }
-                });
+                }
             } catch (IOException e) {
                 handleConfigException(e);
             }
+
+            Path finalTarget = targetPath;
+
+            safeModify(() -> {
+                if (Files.isRegularFile(modifyModFilePath)) {
+                    if (modifyMod.shouldDisable()) {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                "CORE", "Disabling file %s", modifyModFilePath);
+                        Files.move(modifyModFilePath, finalTarget);
+
+                    } else if (modifyMod.shouldDelete()) {
+                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                                "CORE", "Deleting file %s", modifyModFilePath);
+                        safeDelete(modifyModFilePath);
+
+                    } else if (finalTarget != null) {
+                        if (Files.exists(finalTarget)) {
+                            Path disabledFilePath = finalTarget.resolveSibling(finalTarget.getFileName() + ".disabled-by-mod-director");
+                            if (Files.exists(disabledFilePath)) {
+                                safeDelete(disabledFilePath);
+                            }
+                            Files.move(finalTarget, disabledFilePath);
+                        }
+
+                        Files.move(modifyModFilePath, finalTarget);
+                    }
+                }
+            }, "Mod file modification for " + modifyModFilePath.getFileName(), modifyModFilePath, finalTarget);
         }
     }
 
