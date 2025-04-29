@@ -423,7 +423,7 @@ public class ForgeLateLoader {
 
         if(fileUrl != null) {
             try {
-                if(System.getProperty("java.version").startsWith("1.8")) {
+                if(!isCleanroomLoaded()) {
                     addUrlMethodHandle.invoke(classLoader.getClass().getClassLoader(), fileUrl);
                 }
                 classLoader.addURL(fileUrl);
@@ -530,6 +530,15 @@ public class ForgeLateLoader {
                         "ModDirector/ForgeLateLoader", "Launchwrapper", t,
                         "Failed to add jar to access transformers");
             }
+        }
+    }
+
+    private boolean isCleanroomLoaded() {
+        try {
+            Class.forName("com.cleanroommc.common.CleanroomVersion");
+            return true;
+        } catch(ClassNotFoundException e) {
+            return false;
         }
     }
 }
