@@ -25,11 +25,11 @@ jobs:
         with:
           name: Download Core
           path: ./mod-director-core/build/libs
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Download Launchwrapper
           path: ./mod-director-launchwrapper/build/libs
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Download Standalone
           path: ./mod-director-standalone/build/libs
