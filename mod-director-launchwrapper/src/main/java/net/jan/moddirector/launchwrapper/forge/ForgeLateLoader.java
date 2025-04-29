@@ -423,7 +423,9 @@ public class ForgeLateLoader {
 
         if(fileUrl != null) {
             try {
-                addUrlMethodHandle.invoke(classLoader.getClass().getClassLoader(), fileUrl);
+                if(System.getProperty("java.version").startsWith("1.8")) {
+                    addUrlMethodHandle.invoke(classLoader.getClass().getClassLoader(), fileUrl);
+                }
                 classLoader.addURL(fileUrl);
             } catch(Throwable e) {
                 director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, "ModDirector/ForgeLateLoader",
