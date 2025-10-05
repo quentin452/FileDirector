@@ -36,6 +36,9 @@ public class InstallController {
                 ModDirectorSeverityLevel.WARN : ModDirectorSeverityLevel.ERROR;
     }
 
+    // Cache for mod information to avoid duplicate queries
+    private final java.util.Map<ModDirectorRemoteMod, RemoteModInformation> modInfoCache = new java.util.HashMap<>();
+
     public List<Callable<Void>> createPreInstallTasks(
             List<ModDirectorRemoteMod> allMods,
             List<ModDirectorRemoteMod> excludedMods,
@@ -73,6 +76,10 @@ public class InstallController {
 
                 try {
                     information = mod.queryInformation();
+                    // Cache the information for later use
+                    synchronized(modInfoCache) {
+                        modInfoCache.put(mod, information);
+                    }
                 } catch(ModDirectorException e) {
                     director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
                             "CORE", e, "Failed to query information for %s from %s",
@@ -334,7 +341,14 @@ public class InstallController {
             // Process all mods from configuration to get their expected filenames
             for (ModDirectorRemoteMod mod : allMods) {
                 try {
-                    RemoteModInformation information = mod.queryInformation();
+                    // Use cached information if available to avoid duplicate queryInformation() calls
+                    RemoteModInformation information = modInfoCache.get(mod);
+                    if (information == null) {
+                        // Fallback to querying if not in cache (shouldn't happen normally)
+                        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                                "CORE", "Mod information not in cache, querying: %s", mod.offlineName());
+                        information = mod.queryInformation();
+                    }
                     Path targetFile = computeInstallationTargetPath(mod, information);
                     
                     if (targetFile != null) {
@@ -352,7 +366,7 @@ public class InstallController {
                     }
                 } catch (Exception e) {
                     director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
-                            "CORE", e, "Failed to query information for mod %s during cleanup", mod.offlineName());
+                            "CORE", e, "Failed to get information for mod %s during cleanup", mod.offlineName());
                 }
             }
             
@@ -446,7 +460,20 @@ public class InstallController {
         } catch (Exception e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
                     "CORE", e, "Failed to cleanup old mods");
+        } finally {
+            // Clear the cache after cleanup is complete to free memory
+            clearModInfoCache();
         }
+    }
+
+    /**
+     * Clears the mod information cache.
+     * This should be called after all mod operations are complete to free up memory.
+     */
+    public void clearModInfoCache() {
+        modInfoCache.clear();
+        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                "CORE", "Cleared mod information cache (%d entries)", modInfoCache.size());
     }
 
     /**
