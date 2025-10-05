@@ -155,7 +155,7 @@ public class ModDirector {
         // Clean up mods that are no longer in the configuration
         // This must be done BEFORE installation to remove old files before they get overwritten
         logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Cleaning up old mod files...");
-        installController.cleanupOldMods(freshInstalls, reInstalls);
+        installController.cleanupOldMods(mods, freshInstalls, reInstalls);
 
         if(setupDialog != null && installSelector.hasSelectableOptions()) {
             setupDialog.navigateToSelectionPage(installSelector);

@@ -322,35 +322,48 @@ public class InstallController {
      * installed by ModDirector but are no longer present in the configuration.
      * It also performs a migration step to track existing mods that match the configuration.
      *
+     * @param allMods Complete list of all mods from the configuration
      * @param freshMods List of mods to be freshly installed
      * @param reinstallMods List of mods to be reinstalled
      */
-    public void cleanupOldMods(List<InstallableMod> freshMods, List<InstallableMod> reinstallMods) {
+    public void cleanupOldMods(List<ModDirectorRemoteMod> allMods, List<InstallableMod> freshMods, List<InstallableMod> reinstallMods) {
         try {
-            // Build a set of all expected mod filenames from the installable mods
+            // Build a set of all expected mod filenames from ALL mods in configuration
             Set<String> expectedModFiles = new HashSet<>();
+            
+            // Process all mods from configuration to get their expected filenames
+            for (ModDirectorRemoteMod mod : allMods) {
+                try {
+                    RemoteModInformation information = mod.queryInformation();
+                    Path targetFile = computeInstallationTargetPath(mod, information);
+                    
+                    if (targetFile != null) {
+                        expectedModFiles.add(targetFile.getFileName().toString());
+                        
+                        // Also track disabled and bansoukou variants
+                        Path disabledFile = computeDisabledPath(targetFile);
+                        expectedModFiles.add(disabledFile.getFileName().toString());
+                        
+                        Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
+                        expectedModFiles.add(bansoukouPatchedFile.getFileName().toString());
+                        
+                        Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
+                        expectedModFiles.add(bansoukouDisabledFile.getFileName().toString());
+                    }
+                } catch (Exception e) {
+                    director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", e, "Failed to query information for mod %s during cleanup", mod.offlineName());
+                }
+            }
+            
+            // Combine freshMods and reinstallMods for migration
             List<InstallableMod> allInstallableMods = new ArrayList<>();
             allInstallableMods.addAll(freshMods);
             allInstallableMods.addAll(reinstallMods);
-
-            for (InstallableMod mod : allInstallableMods) {
-                Path targetFile = mod.getTargetFile();
-                if (targetFile != null) {
-                    expectedModFiles.add(targetFile.getFileName().toString());
-                    
-                    // Also track disabled and bansoukou variants
-                    Path disabledFile = computeDisabledPath(targetFile);
-                    expectedModFiles.add(disabledFile.getFileName().toString());
-                    
-                    Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
-                    expectedModFiles.add(bansoukouPatchedFile.getFileName().toString());
-                    
-                    Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
-                    expectedModFiles.add(bansoukouDisabledFile.getFileName().toString());
-                }
-            }
-
-            // Get all tracked files
+            
+            // Migration: Track existing mod files that match the configuration
+            // This handles mods that were installed before the tracking system was implemented
+            migrateExistingModsToTracking(allInstallableMods);            // Get all tracked files
             Set<String> trackedFiles = tracker.getTrackedFiles();
             
             // Get the mods directory - use a dummy filename to ensure we get the mods directory itself
@@ -433,6 +446,76 @@ public class InstallController {
         } catch (Exception e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
                     "CORE", e, "Failed to cleanup old mods");
+        }
+    }
+
+    /**
+     * Migrates existing mod files to the tracking system.
+     * This method scans for mod files that exist on disk and match the configuration,
+     * then adds them to the tracking system. This is useful for handling mods that
+     * were installed before the tracking system was implemented.
+     *
+     * @param allInstallableMods All mods that are expected to be installed
+     */
+    private void migrateExistingModsToTracking(List<InstallableMod> allInstallableMods) {
+        try {
+            int migratedCount = 0;
+            
+            for (InstallableMod mod : allInstallableMods) {
+                Path targetFile = mod.getTargetFile();
+                if (targetFile == null) {
+                    continue;
+                }
+                
+                String fileName = targetFile.getFileName().toString();
+                
+                // Check if file exists on disk but is not being tracked
+                if (Files.exists(targetFile) && !tracker.isTracked(fileName)) {
+                    tracker.trackInstalledFile(targetFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Migrated existing mod to tracking: %s", fileName);
+                    migratedCount++;
+                }
+                
+                // Also check for disabled and bansoukou variants
+                Path disabledFile = computeDisabledPath(targetFile);
+                String disabledFileName = disabledFile.getFileName().toString();
+                if (Files.exists(disabledFile) && !tracker.isTracked(disabledFileName)) {
+                    tracker.trackInstalledFile(disabledFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Migrated existing disabled mod to tracking: %s", disabledFileName);
+                    migratedCount++;
+                }
+                
+                Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
+                String bansoukouPatchedFileName = bansoukouPatchedFile.getFileName().toString();
+                if (Files.exists(bansoukouPatchedFile) && !tracker.isTracked(bansoukouPatchedFileName)) {
+                    tracker.trackInstalledFile(bansoukouPatchedFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Migrated existing bansoukou patched mod to tracking: %s", bansoukouPatchedFileName);
+                    migratedCount++;
+                }
+                
+                Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
+                String bansoukouDisabledFileName = bansoukouDisabledFile.getFileName().toString();
+                if (Files.exists(bansoukouDisabledFile) && !tracker.isTracked(bansoukouDisabledFileName)) {
+                    tracker.trackInstalledFile(bansoukouDisabledFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Migrated existing bansoukou disabled mod to tracking: %s", bansoukouDisabledFileName);
+                    migratedCount++;
+                }
+            }
+            
+            if (migratedCount > 0) {
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                        "CORE", "Migrated %d existing mod file(s) to tracking system", migratedCount);
+                // Save the updated tracking data
+                tracker.save();
+            }
+            
+        } catch (Exception e) {
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                    "CORE", e, "Failed to migrate existing mods to tracking");
         }
     }
 }
