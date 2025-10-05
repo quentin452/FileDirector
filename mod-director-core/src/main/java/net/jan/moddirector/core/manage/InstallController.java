@@ -335,6 +335,10 @@ public class InstallController {
      */
     public void cleanupOldMods(List<ModDirectorRemoteMod> allMods, List<InstallableMod> freshMods, List<InstallableMod> reinstallMods) {
         try {
+            // Reconstruct tracking data if the tracking file is empty or missing
+            // This handles retroactive compatibility with older modpack versions
+            reconstructTrackingFromExistingFiles(allMods);
+
             // Build a set of all expected mod filenames from ALL mods in configuration
             Set<String> expectedModFiles = new HashSet<>();
             
@@ -471,9 +475,95 @@ public class InstallController {
      * This should be called after all mod operations are complete to free up memory.
      */
     public void clearModInfoCache() {
+        int cacheSize = modInfoCache.size();
         modInfoCache.clear();
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
-                "CORE", "Cleared mod information cache (%d entries)", modInfoCache.size());
+                "CORE", "Cleared mod information cache (%d entries)", cacheSize);
+    }
+
+    /**
+     * Reconstructs the tracking data from existing mod files on disk.
+     * This is useful for retroactive compatibility when migrating from older
+     * modpack versions that didn't use the tracking system.
+     * 
+     * @param allMods Complete list of all mods from the configuration
+     */
+    public void reconstructTrackingFromExistingFiles(List<ModDirectorRemoteMod> allMods) {
+        if (!tracker.isEmpty()) {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "Tracking file already exists and is not empty, skipping reconstruction");
+            return;
+        }
+
+        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                "CORE", "Tracking file is empty or missing, reconstructing from existing mod files...");
+
+        int reconstructedCount = 0;
+
+        for (ModDirectorRemoteMod mod : allMods) {
+            try {
+                // Use cached information if available
+                RemoteModInformation information = modInfoCache.get(mod);
+                if (information == null) {
+                    // Query if not in cache
+                    information = mod.queryInformation();
+                }
+
+                Path targetFile = computeInstallationTargetPath(mod, information);
+                if (targetFile == null) {
+                    continue;
+                }
+
+                // Check if the main file exists and track it
+                if (Files.exists(targetFile)) {
+                    tracker.trackInstalledFile(targetFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Reconstructed tracking for: %s", targetFile.getFileName());
+                    reconstructedCount++;
+                }
+
+                // Also check for disabled variant
+                Path disabledFile = computeDisabledPath(targetFile);
+                if (Files.exists(disabledFile)) {
+                    tracker.trackInstalledFile(disabledFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Reconstructed tracking for disabled file: %s", disabledFile.getFileName());
+                    reconstructedCount++;
+                }
+
+                // Check for bansoukou patched variant
+                Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
+                if (Files.exists(bansoukouPatchedFile)) {
+                    tracker.trackInstalledFile(bansoukouPatchedFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Reconstructed tracking for bansoukou patched file: %s", bansoukouPatchedFile.getFileName());
+                    reconstructedCount++;
+                }
+
+                // Check for bansoukou disabled variant
+                Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
+                if (Files.exists(bansoukouDisabledFile)) {
+                    tracker.trackInstalledFile(bansoukouDisabledFile);
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Reconstructed tracking for bansoukou disabled file: %s", bansoukouDisabledFile.getFileName());
+                    reconstructedCount++;
+                }
+
+            } catch (Exception e) {
+                director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                        "CORE", e, "Failed to reconstruct tracking for mod %s", mod.offlineName());
+            }
+        }
+
+        if (reconstructedCount > 0) {
+            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                    "CORE", "Reconstructed tracking for %d existing mod file(s)", reconstructedCount);
+            // Save the reconstructed tracking data
+            tracker.save();
+        } else {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "No existing mod files found to reconstruct tracking from");
+        }
     }
 
     /**

@@ -133,6 +133,22 @@ public class InstalledModsTracker {
     }
 
     /**
+     * Check if the tracking file is empty or doesn't exist
+     */
+    public boolean isEmpty() {
+        ensureInitialized();
+        return data.installedFiles.isEmpty();
+    }
+
+    /**
+     * Get the path to the tracking file
+     */
+    public Path getTrackingFilePath() {
+        ensureInitialized();
+        return trackingFilePath;
+    }
+
+    /**
      * Internal data structure for JSON serialization
      */
     private static class TrackingData {
