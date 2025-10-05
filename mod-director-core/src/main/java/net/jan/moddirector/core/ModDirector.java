@@ -6,6 +6,7 @@ import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
 import net.jan.moddirector.core.logging.ModDirectorLogger;
 import net.jan.moddirector.core.configuration.ConfigurationController;
 import net.jan.moddirector.core.manage.InstallController;
+import net.jan.moddirector.core.manage.InstalledModsTracker;
 import net.jan.moddirector.core.manage.NullProgressCallback;
 import net.jan.moddirector.core.manage.ProgressCallback;
 import net.jan.moddirector.core.manage.install.InstallableMod;
@@ -60,6 +61,7 @@ public class ModDirector {
     private final List<InstalledMod> installedMods;
     private final ExecutorService executorService;
     private final NullProgressCallback nullProgressCallback;
+    private final InstalledModsTracker installedModsTracker;
     private String modpackRemoteVersion;
 
     private ModDirector(ModDirectorPlatform platform) {
@@ -67,7 +69,8 @@ public class ModDirector {
         this.logger = platform.logger();
 
         this.configurationController = new ConfigurationController(this, platform.configurationDirectory());
-        this.installController = new InstallController(this);
+        this.installedModsTracker = new InstalledModsTracker(this);
+        this.installController = new InstallController(this, installedModsTracker);
         this.installSelector = new InstallSelector();
 
         this.errors = new LinkedList<>();
@@ -149,6 +152,11 @@ public class ModDirector {
             errorExit();
         }
 
+        // Clean up mods that are no longer in the configuration
+        // This must be done BEFORE installation to remove old files before they get overwritten
+        logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Cleaning up old mod files...");
+        installController.cleanupOldMods(freshInstalls, reInstalls);
+
         if(setupDialog != null && installSelector.hasSelectableOptions()) {
             setupDialog.navigateToSelectionPage(installSelector);
             setupDialog.waitForNext();
@@ -175,6 +183,9 @@ public class ModDirector {
         if(hasFatalError()) {
             errorExit();
         }
+
+        // Save the tracker after all installations are complete
+        installedModsTracker.save();
 
         executorService.shutdown();
         executorService.awaitTermination(timeout, timeUnit);

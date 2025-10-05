@@ -1,0 +1,142 @@
+package net.jan.moddirector.core.manage;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import net.jan.moddirector.core.ModDirector;
+import net.jan.moddirector.core.configuration.ConfigurationController;
+import net.jan.moddirector.core.logging.ModDirectorSeverityLevel;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Tracks mods that have been installed by ModDirector to enable cleanup
+ * of old versions when configuration changes.
+ */
+public class InstalledModsTracker {
+    private static final String TRACKING_FILE = "installed-mods.json";
+    private static final String LOG_DOMAIN = "ModDirector/InstalledModsTracker";
+
+    private final ModDirector director;
+    private Path trackingFilePath;
+    private TrackingData data;
+    private boolean initialized = false;
+
+    public InstalledModsTracker(ModDirector director) {
+        this.director = director;
+        this.data = new TrackingData();
+    }
+
+    /**
+     * Initialize the tracker (must be called after platform bootstrap)
+     */
+    private void ensureInitialized() {
+        if (initialized) {
+            return;
+        }
+        
+        this.trackingFilePath = director.getPlatform().installationRoot().resolve(TRACKING_FILE);
+        load();
+        initialized = true;
+    }
+
+    /**
+     * Load the tracking data from disk
+     */
+    private void load() {
+        if (!Files.exists(trackingFilePath)) {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "No tracking file found, starting fresh");
+            return;
+        }
+
+        try (InputStream stream = Files.newInputStream(trackingFilePath)) {
+            data = ConfigurationController.OBJECT_MAPPER.readValue(stream, TrackingData.class);
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "Loaded %d tracked mod files", data.installedFiles.size());
+        } catch (IOException e) {
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                    "CORE", e, "Failed to load tracking file, starting fresh");
+            data = new TrackingData();
+        }
+    }
+
+    /**
+     * Save the tracking data to disk
+     */
+    public void save() {
+        ensureInitialized();
+        try {
+            Files.createDirectories(trackingFilePath.getParent());
+            try (OutputStream stream = Files.newOutputStream(trackingFilePath)) {
+                ConfigurationController.OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+                        .writeValue(stream, data);
+            }
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "Saved %d tracked mod files", data.installedFiles.size());
+        } catch (IOException e) {
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                    "CORE", e, "Failed to save tracking file");
+        }
+    }
+
+    /**
+     * Track a newly installed mod file
+     */
+    public void trackInstalledFile(Path modFile) {
+        ensureInitialized();
+        String fileName = modFile.getFileName().toString();
+        if (data.installedFiles.add(fileName)) {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "Now tracking: %s", fileName);
+        }
+    }
+
+    /**
+     * Remove a file from tracking (when it's deleted)
+     */
+    public void untrackFile(Path modFile) {
+        ensureInitialized();
+        String fileName = modFile.getFileName().toString();
+        if (data.installedFiles.remove(fileName)) {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "No longer tracking: %s", fileName);
+        }
+    }
+
+    /**
+     * Get all tracked mod filenames
+     */
+    public Set<String> getTrackedFiles() {
+        ensureInitialized();
+        return new HashSet<>(data.installedFiles);
+    }
+
+    /**
+     * Check if a file is being tracked
+     */
+    public boolean isTracked(String fileName) {
+        ensureInitialized();
+        return data.installedFiles.contains(fileName);
+    }
+
+    /**
+     * Clear all tracking data
+     */
+    public void clear() {
+        ensureInitialized();
+        data.installedFiles.clear();
+    }
+
+    /**
+     * Internal data structure for JSON serialization
+     */
+    private static class TrackingData {
+        @JsonProperty("installedFiles")
+        public Set<String> installedFiles = new HashSet<>();
+    }
+}
