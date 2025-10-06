@@ -406,6 +406,16 @@ public class InstallController {
             // Find tracked files that are no longer expected
             for (String trackedFileName : trackedFiles) {
                 if (!expectedModFiles.contains(trackedFileName)) {
+                    // Skip ModDirector's own files - they should never be marked as old mods
+                    if (trackedFileName.toLowerCase().contains("mod-director")) {
+                        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                                "CORE", "Skipping ModDirector file from old mods check: %s", trackedFileName);
+                        // Untrack it so it doesn't appear in future checks
+                        Path dummyPath = modsDir.resolve(trackedFileName);
+                        tracker.untrackFile(dummyPath);
+                        continue;
+                    }
+                    
                     director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
                             "CORE", "Found old tracked mod that is no longer in config: %s", trackedFileName);
                     
@@ -515,6 +525,11 @@ public class InstallController {
      * This is useful for retroactive compatibility when migrating from older
      * modpack versions that didn't use the tracking system.
      * 
+     * Strategy:
+     * 1. If tracking file exists and is not empty, skip reconstruction
+     * 2. Otherwise, scan the mods directory and track ALL existing .jar files
+     * 3. This ensures old mods are detected even if they're not in the current config
+     * 
      * @param allMods Complete list of all mods from the configuration
      */
     public void reconstructTrackingFromExistingFiles(List<ModDirectorRemoteMod> allMods) {
@@ -525,10 +540,43 @@ public class InstallController {
         }
 
         director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                "CORE", "Tracking file is empty or missing, reconstructing from existing mod files...");
+                "CORE", "Tracking file is empty or missing, reconstructing from ALL existing mod files...");
 
         int reconstructedCount = 0;
 
+        // First, scan the entire mods directory and track ALL existing .jar files
+        // This ensures old mods are detected even if they're not in current config
+        try {
+            Path modsDir = director.getPlatform().modFile("dummy.jar").getParent();
+            if (modsDir != null && Files.isDirectory(modsDir)) {
+                try (java.util.stream.Stream<Path> stream = Files.list(modsDir)) {
+                    stream.filter(path -> {
+                        String fileName = path.getFileName().toString();
+                        
+                        // Exclude ModDirector's own files
+                        if (fileName.toLowerCase().contains("mod-director")) {
+                            return false;
+                        }
+                        
+                        // Track .jar files and disabled variants
+                        return fileName.endsWith(".jar") || 
+                               fileName.endsWith(".disabled") || 
+                               fileName.endsWith(".disabled-by-mod-director") ||
+                               fileName.endsWith("-patched.jar");
+                    }).forEach(path -> {
+                        tracker.trackInstalledFile(path);
+                        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                                "CORE", "Reconstructed tracking for existing file: %s", path.getFileName());
+                    });
+                    reconstructedCount = tracker.getTrackedFiles().size();
+                }
+            }
+        } catch (Exception e) {
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                    "CORE", e, "Failed to scan mods directory during reconstruction");
+        }
+
+        // Then verify and track files from current configuration
         for (ModDirectorRemoteMod mod : allMods) {
             try {
                 // Use cached information if available
