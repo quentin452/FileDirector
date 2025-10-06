@@ -47,8 +47,8 @@ public class InstalledModsTracker {
 
     /**
      * Get the tracking file location in the user's home directory.
-     * Structure: %USERPROFILE%/file-director-snap/{modpackName}/installed-mods.json
-     * or ~/.file-director-snap/{modpackName}/installed-mods.json on Unix systems
+     * Structure: %USERPROFILE%/file-director-snap/{modpackName}/{mcVersion}/installed-mods.json
+     * or ~/.file-director-snap/{modpackName}/{mcVersion}/installed-mods.json on Unix systems
      */
     private Path getTrackingFileLocation() {
         String userHome = System.getProperty("user.home");
@@ -58,8 +58,9 @@ public class InstalledModsTracker {
             return director.getPlatform().installationRoot().resolve(TRACKING_FILE);
         }
 
-        // Get modpack name for folder structure
+        // Get modpack name and Minecraft version for folder structure
         String modpackName = "default";
+        String mcVersion = "unknown";
         try {
             if (director.getConfigurationController() != null 
                     && director.getConfigurationController().getModpackConfiguration() != null) {
@@ -72,13 +73,23 @@ public class InstalledModsTracker {
                     director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
                             "CORE", "Using modpack name: %s", modpackName);
                 }
+                
+                // Get Minecraft version to prevent conflicts between same modpack name on different MC versions
+                String mcVer = director.getConfigurationController().getModpackConfiguration().mcVersion();
+                if (mcVer != null && !mcVer.isEmpty()) {
+                    // Sanitize the MC version to be filesystem-safe
+                    mcVersion = mcVer.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Using Minecraft version: %s", mcVersion);
+                }
             }
         } catch (Exception e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
-                    "CORE", e, "Failed to get modpack name, using default");
+                    "CORE", e, "Failed to get modpack name or MC version, using defaults");
         }
 
-        Path fileDirectorPath = java.nio.file.Paths.get(userHome, FILE_DIRECTOR_DIR, modpackName);
+        Path fileDirectorPath = java.nio.file.Paths.get(userHome, FILE_DIRECTOR_DIR, modpackName, mcVersion);
         Path trackingFile = fileDirectorPath.resolve(TRACKING_FILE);
         
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
