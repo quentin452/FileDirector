@@ -20,6 +20,7 @@ import java.util.Set;
 public class InstalledModsTracker {
     private static final String TRACKING_FILE = "installed-mods.json";
     private static final String LOG_DOMAIN = "ModDirector/InstalledModsTracker";
+    private static final String FILE_DIRECTOR_DIR = "file-director-snap";
 
     private final ModDirector director;
     private Path trackingFilePath;
@@ -39,9 +40,51 @@ public class InstalledModsTracker {
             return;
         }
         
-        this.trackingFilePath = director.getPlatform().installationRoot().resolve(TRACKING_FILE);
+        this.trackingFilePath = getTrackingFileLocation();
         load();
         initialized = true;
+    }
+
+    /**
+     * Get the tracking file location in the user's home directory.
+     * Structure: %USERPROFILE%/file-director-snap/{modpackName}/installed-mods.json
+     * or ~/.file-director-snap/{modpackName}/installed-mods.json on Unix systems
+     */
+    private Path getTrackingFileLocation() {
+        String userHome = System.getProperty("user.home");
+        if (userHome == null || userHome.isEmpty()) {
+            director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                    "CORE", "user.home system property not set, falling back to installation root");
+            return director.getPlatform().installationRoot().resolve(TRACKING_FILE);
+        }
+
+        // Get modpack name for folder structure
+        String modpackName = "default";
+        try {
+            if (director.getConfigurationController() != null 
+                    && director.getConfigurationController().getModpackConfiguration() != null) {
+                String packName = director.getConfigurationController().getModpackConfiguration().packName();
+                if (packName != null && !packName.isEmpty()) {
+                    // Sanitize the modpack name to be filesystem-safe
+                    // Note: packName is validated to not contain versions in ModpackConfiguration constructor
+                    modpackName = packName.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    
+                    director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                            "CORE", "Using modpack name: %s", modpackName);
+                }
+            }
+        } catch (Exception e) {
+            director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", e, "Failed to get modpack name, using default");
+        }
+
+        Path fileDirectorPath = java.nio.file.Paths.get(userHome, FILE_DIRECTOR_DIR, modpackName);
+        Path trackingFile = fileDirectorPath.resolve(TRACKING_FILE);
+        
+        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                "CORE", "Using tracking file location: %s", trackingFile.toString());
+        
+        return trackingFile;
     }
 
     /**

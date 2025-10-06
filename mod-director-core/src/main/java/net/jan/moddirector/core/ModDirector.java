@@ -13,11 +13,14 @@ import net.jan.moddirector.core.manage.install.InstallableMod;
 import net.jan.moddirector.core.manage.install.InstalledMod;
 import net.jan.moddirector.core.manage.ModDirectorError;
 import net.jan.moddirector.core.manage.select.InstallSelector;
+import net.jan.moddirector.core.manage.select.RemovalSelector;
 import net.jan.moddirector.core.platform.ModDirectorPlatform;
 import net.jan.moddirector.core.ui.SetupDialog;
 import net.jan.moddirector.core.ui.VersionMismatchDialog;
 import net.jan.moddirector.core.ui.page.ProgressPage;
 import net.jan.moddirector.core.util.WebClient;
+
+import java.nio.file.Path;
 import net.jan.moddirector.core.util.WebGetResponse;
 import net.minecraftforge.fml.exit.QualifiedExit;
 import org.apache.commons.io.FileUtils;
@@ -152,14 +155,25 @@ public class ModDirector {
             errorExit();
         }
 
-        // Clean up mods that are no longer in the configuration
-        // This must be done BEFORE installation to remove old files before they get overwritten
-        logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Cleaning up old mod files...");
-        installController.cleanupOldMods(mods, freshInstalls, reInstalls);
+        // Identify old mods that are no longer in the configuration
+        logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", "Identifying old mod files...");
+        List<Path> oldMods = installController.identifyOldMods(mods, freshInstalls, reInstalls);
+        
+        // Create removal selector for old mods
+        RemovalSelector removalSelector = new RemovalSelector();
+        removalSelector.accept(oldMods);
 
-        if(setupDialog != null && installSelector.hasSelectableOptions()) {
-            setupDialog.navigateToSelectionPage(installSelector);
-            setupDialog.waitForNext();
+        // Show selection dialogs if there are selectable options
+        if(setupDialog != null && (installSelector.hasSelectableOptions() || removalSelector.hasModsToRemove())) {
+            if (installSelector.hasSelectableOptions()) {
+                setupDialog.navigateToSelectionPage(installSelector);
+                setupDialog.waitForNext();
+            }
+            
+            if (removalSelector.hasModsToRemove()) {
+                setupDialog.navigateToRemovalPage(removalSelector);
+                setupDialog.waitForNext();
+            }
         }
 
         List<InstallableMod> toInstall = installSelector.computeModsToInstall();
@@ -184,7 +198,17 @@ public class ModDirector {
             errorExit();
         }
 
-        // Save the tracker after all installations are complete
+        // Remove old mods that the user selected for deletion
+        if (removalSelector.hasModsToRemove()) {
+            List<Path> modsToRemove = removalSelector.computeModsToRemove();
+            if (!modsToRemove.isEmpty()) {
+                logger.log(ModDirectorSeverityLevel.INFO, "ModDirector", "CORE", 
+                        "Removing %d old mod file(s)...", modsToRemove.size());
+                installController.removeOldMods(modsToRemove);
+            }
+        }
+
+        // Save the tracker after all installations and removals are complete
         installedModsTracker.save();
 
         executorService.shutdown();

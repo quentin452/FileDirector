@@ -324,16 +324,17 @@ public class InstallController {
     }
 
     /**
-     * Removes mod files that are no longer in the configuration.
-     * This method uses the tracking system to identify mods that were previously 
-     * installed by ModDirector but are no longer present in the configuration.
-     * It also performs a migration step to track existing mods that match the configuration.
-     *
+     * Identifies mod files that are no longer in the configuration and should be removed.
+     * Returns a list of old mod files for user confirmation before deletion.
+     * 
      * @param allMods Complete list of all mods from the configuration
      * @param freshMods List of mods to be freshly installed
      * @param reinstallMods List of mods to be reinstalled
+     * @return List of paths to old mod files that can be removed
      */
-    public void cleanupOldMods(List<ModDirectorRemoteMod> allMods, List<InstallableMod> freshMods, List<InstallableMod> reinstallMods) {
+    public List<Path> identifyOldMods(List<ModDirectorRemoteMod> allMods, List<InstallableMod> freshMods, List<InstallableMod> reinstallMods) {
+        List<Path> oldModsToRemove = new ArrayList<>();
+        
         try {
             // Reconstruct tracking data if the tracking file is empty or missing
             // This handles retroactive compatibility with older modpack versions
@@ -381,7 +382,9 @@ public class InstallController {
             
             // Migration: Track existing mod files that match the configuration
             // This handles mods that were installed before the tracking system was implemented
-            migrateExistingModsToTracking(allInstallableMods);            // Get all tracked files
+            migrateExistingModsToTracking(allInstallableMods);
+            
+            // Get all tracked files
             Set<String> trackedFiles = tracker.getTrackedFiles();
             
             // Get the mods directory - use a dummy filename to ensure we get the mods directory itself
@@ -390,7 +393,7 @@ public class InstallController {
                 director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
                         "CORE", "Mods directory not found or not a directory: %s", 
                         modsDir != null ? modsDir.toString() : "null");
-                return;
+                return oldModsToRemove;
             }
 
             // Get the installation root for searching in other directories
@@ -401,7 +404,6 @@ public class InstallController {
                     modsDir.toString(), installationRoot.toString());
 
             // Find tracked files that are no longer expected
-            int removedCount = 0;
             for (String trackedFileName : trackedFiles) {
                 if (!expectedModFiles.contains(trackedFileName)) {
                     director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
@@ -430,44 +432,71 @@ public class InstallController {
                     }
                     
                     if (fileToRemove != null) {
-                        director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                "CORE", "Removing old tracked mod file: %s", fileToRemove.toString());
-                        try {
-                            Files.delete(fileToRemove);
-                            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                                    "CORE", "Successfully removed old mod file: %s", trackedFileName);
-                            removedCount++;
-                            
-                            // Remove from tracking
-                            tracker.untrackFile(fileToRemove);
-                            
-                        } catch (IOException e) {
-                            director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
-                                    "CORE", e, "Failed to remove old mod file: %s", trackedFileName);
-                        }
+                        oldModsToRemove.add(fileToRemove);
                     } else {
-                        director.getLogger().log(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
-                                "CORE", "Tracked file not found in expected locations, removing from tracking only: %s", trackedFileName);
-                        
-                        // Remove from tracking even if file doesn't exist
+                        // File doesn't exist anymore but is tracked - just untrack it
+                        director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                                "CORE", "Tracked file not found, will remove from tracking: %s", trackedFileName);
                         Path dummyPath = modsDir.resolve(trackedFileName);
                         tracker.untrackFile(dummyPath);
                     }
                 }
             }
             
-            if (removedCount > 0) {
+            if (!oldModsToRemove.isEmpty()) {
                 director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
-                        "CORE", "Removed %d old mod file(s)", removedCount);
+                        "CORE", "Found %d old mod file(s) for potential removal", oldModsToRemove.size());
             }
             
         } catch (Exception e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
-                    "CORE", e, "Failed to cleanup old mods");
-        } finally {
-            // Clear the cache after cleanup is complete to free memory
-            clearModInfoCache();
+                    "CORE", e, "Failed to identify old mods");
         }
+        
+        return oldModsToRemove;
+    }
+
+    /**
+     * Removes the specified old mod files that the user has confirmed for deletion.
+     * 
+     * @param oldModsToRemove List of paths to old mod files to remove
+     */
+    public void removeOldMods(List<Path> oldModsToRemove) {
+        if (oldModsToRemove == null || oldModsToRemove.isEmpty()) {
+            director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                    "CORE", "No old mods to remove");
+            clearModInfoCache();
+            return;
+        }
+
+        int removedCount = 0;
+        for (Path fileToRemove : oldModsToRemove) {
+            try {
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                        "CORE", "Removing old mod file: %s", fileToRemove.toString());
+                Files.delete(fileToRemove);
+                director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                        "CORE", "Successfully removed old mod file: %s", fileToRemove.getFileName());
+                removedCount++;
+                
+                // Remove from tracking
+                tracker.untrackFile(fileToRemove);
+                
+            } catch (IOException e) {
+                director.getLogger().logThrowable(ModDirectorSeverityLevel.WARN, LOG_DOMAIN,
+                        "CORE", e, "Failed to remove old mod file: %s", fileToRemove.getFileName());
+            }
+        }
+        
+        if (removedCount > 0) {
+            director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                    "CORE", "Removed %d old mod file(s)", removedCount);
+            // Save tracker after modifications
+            tracker.save();
+        }
+        
+        // Clear the cache after cleanup is complete to free memory
+        clearModInfoCache();
     }
 
     /**

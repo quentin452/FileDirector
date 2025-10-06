@@ -2,6 +2,8 @@ package net.jan.moddirector.core.ui;
 
 import net.jan.moddirector.core.configuration.modpack.ModpackConfiguration;
 import net.jan.moddirector.core.manage.select.InstallSelector;
+import net.jan.moddirector.core.manage.select.RemovalSelector;
+import net.jan.moddirector.core.ui.page.ModRemovalPage;
 import net.jan.moddirector.core.ui.page.ModSelectionPage;
 import net.jan.moddirector.core.ui.page.ProgressPage;
 
@@ -26,7 +28,7 @@ public class SetupDialog extends JDialog {
         this.nextButton = new JButton("Next");
         this.nextButton.addActionListener(e -> nextLatch.countDown());
 
-        setTitle(configuration.packName());
+        setTitle(configuration.packName() + " " + configuration.mcVersion() + " " + configuration.localVersion());
         setSize(WIDTH, HEIGHT);
         setAlwaysOnTop(true);
     }
@@ -38,6 +40,11 @@ public class SetupDialog extends JDialog {
 
     public ModSelectionPage navigateToSelectionPage(InstallSelector installSelector) {
         ModSelectionPage page = new ModSelectionPage(installSelector);
+        return updateContent(page, true);
+    }
+
+    public ModRemovalPage navigateToRemovalPage(RemovalSelector removalSelector) {
+        ModRemovalPage page = new ModRemovalPage(removalSelector);
         return updateContent(page, true);
     }
 
