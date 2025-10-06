@@ -47,8 +47,11 @@ public class InstalledModsTracker {
 
     /**
      * Get the tracking file location in the user's home directory.
-     * Structure: %USERPROFILE%/file-director-snap/{modpackName}/{mcVersion}/installed-mods.json
-     * or ~/.file-director-snap/{modpackName}/{mcVersion}/installed-mods.json on Unix systems
+     * Structure: %USERPROFILE%/file-director-snap/{modpackName}/{mcVersion}/{side}/installed-mods.json
+     * or ~/.file-director-snap/{modpackName}/{mcVersion}/{side}/installed-mods.json on Unix systems
+     * 
+     * The 'side' component (client/server) prevents conflicts when running both client and server
+     * with different mod configurations in the same installation directory.
      */
     private Path getTrackingFileLocation() {
         String userHome = System.getProperty("user.home");
@@ -58,9 +61,11 @@ public class InstalledModsTracker {
             return director.getPlatform().installationRoot().resolve(TRACKING_FILE);
         }
 
-        // Get modpack name and Minecraft version for folder structure
+        // Get modpack name, Minecraft version, and side (client/server) for folder structure
         String modpackName = "default";
         String mcVersion = "unknown";
+        String side = "unknown";
+        
         try {
             if (director.getConfigurationController() != null 
                     && director.getConfigurationController().getModpackConfiguration() != null) {
@@ -84,12 +89,25 @@ public class InstalledModsTracker {
                             "CORE", "Using Minecraft version: %s", mcVersion);
                 }
             }
+            
+            // Get platform side (client/server) to separate tracking between client and server
+            // This prevents conflicts when running both in the same installation directory
+            net.jan.moddirector.core.platform.PlatformSide platformSide = director.getPlatform().side();
+            if (platformSide != null) {
+                side = platformSide.toString().toLowerCase();
+                director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                        "CORE", "Using platform side: %s", side);
+            } else {
+                director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
+                        "CORE", "Platform side not determined, using 'unknown'");
+            }
+            
         } catch (Exception e) {
             director.getLogger().logThrowable(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
-                    "CORE", e, "Failed to get modpack name or MC version, using defaults");
+                    "CORE", e, "Failed to get modpack info, MC version, or platform side; using defaults");
         }
 
-        Path fileDirectorPath = java.nio.file.Paths.get(userHome, FILE_DIRECTOR_DIR, modpackName, mcVersion);
+        Path fileDirectorPath = java.nio.file.Paths.get(userHome, FILE_DIRECTOR_DIR, modpackName, mcVersion, side);
         Path trackingFile = fileDirectorPath.resolve(TRACKING_FILE);
         
         director.getLogger().log(ModDirectorSeverityLevel.DEBUG, LOG_DOMAIN,
