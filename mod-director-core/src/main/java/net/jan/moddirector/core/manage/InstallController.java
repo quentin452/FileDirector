@@ -221,6 +221,21 @@ public class InstallController {
      * expected filename (the part before the version), ignoring the exact target and any
      * .disabled-by-mod-director marker. Only consulted when dev mode is enabled.
      */
+    // Listing per target folder, cached so we scan the (900+ file) mods dir ONCE, not per mod.
+    // Pre-install tasks run concurrently, hence the concurrent map.
+    private final java.util.Map<Path, java.util.List<String>> devModeDirCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private java.util.List<String> devModeDirNames(Path dir) {
+        return devModeDirCache.computeIfAbsent(dir, d -> {
+            try(java.util.stream.Stream<Path> files = Files.list(d)) {
+                return files.map(p -> p.getFileName().toString()).collect(java.util.stream.Collectors.toList());
+            } catch(java.io.IOException e) {
+                return java.util.Collections.emptyList();
+            }
+        });
+    }
+
     private boolean devModeExistingVariant(Path targetFile) {
         if(!isDevMode() || targetFile == null || targetFile.getParent() == null) {
             return false;
@@ -230,18 +245,16 @@ public class InstallController {
         if(prefix.isEmpty()) {
             return false;
         }
-        try(java.util.stream.Stream<Path> files = Files.list(targetFile.getParent())) {
-            return files.anyMatch(p -> {
-                String name = p.getFileName().toString();
-                if(name.equalsIgnoreCase(expected) || name.endsWith(".disabled-by-mod-director")) {
-                    return false;
-                }
-                String lower = name.toLowerCase(java.util.Locale.ROOT);
-                return lower.startsWith(prefix) && (lower.endsWith(".jar") || lower.endsWith(".jar.disabled"));
-            });
-        } catch(java.io.IOException e) {
-            return false;
+        for(String name : devModeDirNames(targetFile.getParent())) {
+            if(name.equalsIgnoreCase(expected) || name.endsWith(".disabled-by-mod-director")) {
+                continue;
+            }
+            String lower = name.toLowerCase(java.util.Locale.ROOT);
+            if(lower.startsWith(prefix) && (lower.endsWith(".jar") || lower.endsWith(".jar.disabled"))) {
+                return true;
+            }
         }
+        return false;
     }
 
     /** "optimizationsandtweaks-V1.16.2.jar" -&gt; "optimizationsandtweaks-" (cut before the version token). */
