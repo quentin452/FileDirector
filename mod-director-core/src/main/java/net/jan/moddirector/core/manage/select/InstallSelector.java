@@ -65,9 +65,16 @@ public class InstallSelector {
                     InstallationPolicy policy = remoteMod.getInstallationPolicy();
                     String optionalKey = policy == null ? "$" : policy.getOptionalKey();
                     if(!ignoredGroups.contains(optionalKey)) {
+                        // Prefer the real mod name (already fetched into RemoteModInformation) over the
+                        // "Project ID: x, File ID: y" offline placeholder, so the dialog reads e.g.
+                        // "OptimizationsAndTweaks" instead of raw CurseForge ids.
+                        String modName = mod.getRemoteInformation() != null
+                                && mod.getRemoteInformation().getDisplayName() != null
+                                ? mod.getRemoteInformation().getDisplayName()
+                                : remoteMod.offlineName();
                         SelectableInstallOption installOption = new SelectableInstallOption(
                                 policy == null || optionalKey == null || policy.isSelectedByDefault(),
-                                policy == null || policy.getName() == null ? remoteMod.offlineName() : policy.getName() + " - " + remoteMod.offlineName(),
+                                policy == null || policy.getName() == null ? modName : policy.getName() + " - " + modName,
                                 policy == null ? "" : policy.getDescription(),
                                 policy == null || remoteMod.remoteType() == null ? "Unknown" : remoteMod.remoteType()
                         );

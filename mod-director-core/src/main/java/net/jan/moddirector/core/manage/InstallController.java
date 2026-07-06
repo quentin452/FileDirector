@@ -109,6 +109,19 @@ public class InstallController {
 
                 InstallableMod installableMod = new InstallableMod(mod, information, targetFile);
 
+                // Dev mode: if a jar for this mod is already present under a different name/version
+                // (typically a locally-built custom jar), keep it and skip the download entirely so it
+                // is not re-downloaded and superseded on every launch. Off by default; enable with
+                // -Dmoddirector.devMode=true. Never affects normal users.
+                if(devModeExistingVariant(targetFile)) {
+                    director.getLogger().log(ModDirectorSeverityLevel.INFO, LOG_DOMAIN,
+                            "CORE", "Dev mode: keeping existing local variant of %s, skipping download",
+                            targetFile.getFileName().toString());
+                    excludedMods.add(mod);
+                    callback.done();
+                    return null;
+                }
+
                 Path bansoukouPatchedFile = computeBansoukouPatchedPath(targetFile);
                 Path bansoukouDisabledFile = computeBansoukouDisabledPath(targetFile);
 
@@ -196,6 +209,51 @@ public class InstallController {
         }
 
         return targetFile;
+    }
+
+    private static boolean isDevMode() {
+        return Boolean.getBoolean("moddirector.devMode");
+    }
+
+    /**
+     * Dev-mode helper: is there already a file in the target folder that looks like this mod but under
+     * a different name/version (e.g. a locally-built custom jar)? Matches by the mod-name prefix of the
+     * expected filename (the part before the version), ignoring the exact target and any
+     * .disabled-by-mod-director marker. Only consulted when dev mode is enabled.
+     */
+    private boolean devModeExistingVariant(Path targetFile) {
+        if(!isDevMode() || targetFile == null || targetFile.getParent() == null) {
+            return false;
+        }
+        String expected = targetFile.getFileName().toString();
+        String prefix = modNamePrefix(expected);
+        if(prefix.isEmpty()) {
+            return false;
+        }
+        try(java.util.stream.Stream<Path> files = Files.list(targetFile.getParent())) {
+            return files.anyMatch(p -> {
+                String name = p.getFileName().toString();
+                if(name.equalsIgnoreCase(expected) || name.endsWith(".disabled-by-mod-director")) {
+                    return false;
+                }
+                String lower = name.toLowerCase(java.util.Locale.ROOT);
+                return lower.startsWith(prefix) && (lower.endsWith(".jar") || lower.endsWith(".jar.disabled"));
+            });
+        } catch(java.io.IOException e) {
+            return false;
+        }
+    }
+
+    /** "optimizationsandtweaks-V1.16.2.jar" -&gt; "optimizationsandtweaks-" (cut before the version token). */
+    private static String modNamePrefix(String fileName) {
+        String stem = fileName;
+        int dot = stem.lastIndexOf('.');
+        if(dot > 0) {
+            stem = stem.substring(0, dot);
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-[vV]?\\d").matcher(stem);
+        String prefix = m.find() ? stem.substring(0, m.start()) : stem;
+        return prefix.isEmpty() ? "" : prefix.toLowerCase(java.util.Locale.ROOT) + "-";
     }
 
     private Path computeDisabledPath(Path modFile) {
