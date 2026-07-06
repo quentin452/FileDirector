@@ -257,14 +257,19 @@ public class InstallController {
         return false;
     }
 
-    /** "optimizationsandtweaks-V1.16.2.jar" -&gt; "optimizationsandtweaks-" (cut before the version token). */
+    /**
+     * "optimizationsandtweaks-V1.16.2.jar" -&gt; "optimizationsandtweaks-" (cut before the version token).
+     * Also cuts before a "-mcX" MC-version token so a bundle name like
+     * "ImmersiveEngineering-mc1.7.10-0.7.11-fork3.jar" and a locally-built "ImmersiveEngineering-0.7.11-fork4.jar"
+     * yield the SAME prefix (else devMode fails to match the built jar and re-downloads the bundle version).
+     */
     private static String modNamePrefix(String fileName) {
         String stem = fileName;
         int dot = stem.lastIndexOf('.');
         if(dot > 0) {
             stem = stem.substring(0, dot);
         }
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-[vV]?\\d").matcher(stem);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-(?:mc)?[vV]?\\d").matcher(stem);
         String prefix = m.find() ? stem.substring(0, m.start()) : stem;
         return prefix.isEmpty() ? "" : prefix.toLowerCase(java.util.Locale.ROOT) + "-";
     }
