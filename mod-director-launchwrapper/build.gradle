@@ -24,6 +24,20 @@ dependencies {
     compileOnly group: "net.minecraft", name: "launchwrapper", version: "1.12"
 }
 
+shadowJar {
+    // Strip only Java 9+ module descriptors (module-info.class, incl. the ones under
+    // META-INF/versions/9/). They are JPMS-only, inert when Forge loads mods on the classpath
+    // (unnamed module) on ANY Java, and they trip CurseForge's scanner into a false-positive
+    // "failed processing". FileDirector ships 1.7.10 -> 1.12.2 and runs under lwjgl3ify/Java 21,
+    // so we must NOT strip real multi-release class overlays: verified the shaded deps
+    // (jackson, gson, commons-io) carry ONLY module-info under META-INF/versions/**, but the
+    // '**/module-info.class' pattern stays correct even if a future dep bump adds real overlays.
+    // Keep real classes, META-INF/services, and /cacerts (mod-director-core overrides the SSL
+    // truststore at runtime for HTTPS downloads on ancient Java).
+    exclude '**/module-info.class'
+    exclude 'META-INF/maven/**'
+}
+
 jar {
     manifest {
         attributes([
