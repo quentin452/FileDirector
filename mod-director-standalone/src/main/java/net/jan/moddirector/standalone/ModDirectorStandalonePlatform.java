@@ -12,9 +12,17 @@ import java.nio.file.Paths;
 
 public class ModDirectorStandalonePlatform implements ModDirectorPlatform {
     private final ModDirectorLogger logger;
+    private final Path configurationDirectory;
+    private final Path installationRoot;
 
     public ModDirectorStandalonePlatform() {
+        this(Paths.get(".", "config", "mod-director"), Paths.get("."));
+    }
+
+    public ModDirectorStandalonePlatform(Path configurationDirectory, Path installationRoot) {
         this.logger = new ModDirectorStandaloneLogger();
+        this.configurationDirectory = configurationDirectory;
+        this.installationRoot = installationRoot;
     }
 
     @Override
@@ -24,7 +32,7 @@ public class ModDirectorStandalonePlatform implements ModDirectorPlatform {
 
     @Override
     public Path configurationDirectory() {
-        return Paths.get(".", "config", "mod-director");
+        return configurationDirectory;
     }
 
     @Override
@@ -44,7 +52,7 @@ public class ModDirectorStandalonePlatform implements ModDirectorPlatform {
 
     @Override
     public Path installationRoot() {
-        return Paths.get(".");
+        return installationRoot;
     }
 
     @Override

@@ -69,6 +69,19 @@ public class ModrinthRemoteMod extends ModDirectorRemoteMod {
     }
 
     @Override
+    public URL validationUrl(RemoteModInformation information) throws ModDirectorException {
+        // Resolved by queryInformation() from the Modrinth version API.
+        if(fileInformation == null || fileInformation.files == null || fileInformation.files.isEmpty()) {
+            return null;
+        }
+        try {
+            return new URL(fileInformation.files.get(0).url);
+        } catch(MalformedURLException e) {
+            throw new ModDirectorException("Failed to create Modrinth download URL", e);
+        }
+    }
+
+    @Override
     public RemoteModInformation queryInformation() throws ModDirectorException {
         queryTitle();
         try {

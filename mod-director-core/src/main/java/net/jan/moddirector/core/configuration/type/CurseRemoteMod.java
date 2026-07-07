@@ -73,6 +73,14 @@ public class CurseRemoteMod extends ModDirectorRemoteMod {
     }
 
     @Override
+    public URL validationUrl(RemoteModInformation information) {
+        // Populated by queryInformation() via api.curse.tools -> forgecdn CDN URL. A null here means
+        // curse.tools resolved the file but exposed no direct URL; per the BUG-010 lesson that is NOT
+        // a failure (the API resolution itself proves fetchability), so validation treats null as OK.
+        return this.information != null ? this.information.downloadUrl : null;
+    }
+
+    @Override
     public RemoteModInformation queryInformation() throws ModDirectorException {
         try {
             URL apiUrl = new URL(String.format("https://api.curse.tools/v1/cf/mods/%s/files/%s", addonId, fileId));

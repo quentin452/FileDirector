@@ -4,6 +4,7 @@ import net.jan.moddirector.core.ModDirector;
 import net.jan.moddirector.core.exception.ModDirectorException;
 import net.jan.moddirector.core.manage.ProgressCallback;
 
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
@@ -50,6 +51,17 @@ public abstract class ModDirectorRemoteMod {
     public abstract RemoteModInformation queryInformation() throws ModDirectorException;
     public abstract void performInstall(Path targetFile, ProgressCallback progressCallback, ModDirector director,
             RemoteModInformation information) throws ModDirectorException;
+
+    /**
+     * Returns the concrete download URL that {@code --validate} should probe for reachability,
+     * or {@code null} when this remote type has no separately-testable URL (in which case a
+     * successful {@link #queryInformation()} is itself the fetchability proof — e.g. Curse, whose
+     * api.curse.tools resolution already exercises the download path). Must be called AFTER
+     * {@link #queryInformation()} so type-specific resolution state is populated.
+     */
+    public URL validationUrl(RemoteModInformation information) throws ModDirectorException {
+        return null;
+    }
 
     public RemoteModMetadata getMetadata() {
         return metadata;

@@ -2,11 +2,21 @@ package net.jan.moddirector.standalone;
 
 import net.jan.moddirector.core.ModDirector;
 
-import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 public class ModDirectorStandalone {
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws Exception {
+        if(args.length >= 1 && "--validate".equals(args[0])) {
+            if(args.length < 2) {
+                System.err.println("usage: --validate <config-dir>");
+                System.exit(2);
+                return;
+            }
+            System.exit(ModDirectorValidator.run(Paths.get(args[1])));
+            return;
+        }
+
         ModDirectorStandalonePlatform platform = new ModDirectorStandalonePlatform();
         ModDirector director = ModDirector.bootstrap(platform);
 

@@ -161,6 +161,13 @@ public class UrlRemoteMod extends ModDirectorRemoteMod {
     }
 
     @Override
+    public URL validationUrl(RemoteModInformation information) {
+        // The declared URL. For entries that use "follows" (HTML redirect scraping) this is the
+        // landing page, not the final file — reachability of the root still validates the entry.
+        return url;
+    }
+
+    @Override
     public RemoteModInformation queryInformation() {
         if(fileName != null) {
             return new RemoteModInformation(fileName, fileName);

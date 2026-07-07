@@ -74,6 +74,10 @@ public class RemoteModMetadata {
         return HashResult.UNKNOWN;
     }
 
+    public PlatformSide getSide() {
+        return side;
+    }
+
     public boolean shouldTryInstall(ModDirector modDirector) {
         PlatformSide currentSide = modDirector.getPlatform().side();
         return currentSide == null || side == null || currentSide == side;
