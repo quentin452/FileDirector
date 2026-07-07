@@ -78,7 +78,9 @@ public class ModDirector {
 
         this.errors = new LinkedList<>();
         this.installedMods = new LinkedList<>();
-        this.executorService = Executors.newFixedThreadPool(4);
+        // Higher parallelism for the per-mod network query phase ("Querying mod information"):
+        // each mod does an independent, latency-bound HTTP GET, so more threads shrink the wall time.
+        this.executorService = Executors.newFixedThreadPool(16);
 
         this.nullProgressCallback = new NullProgressCallback();
 
@@ -149,6 +151,16 @@ public class ModDirector {
         );
 
         awaitAll(executorService.invokeAll(preInstallTasks));
+
+        // Persist the mod-info disk cache now that the query phase is done, so the next boot can
+        // skip the network. Guarded so a cache write failure can never break the boot path.
+        try {
+            installController.persistModInfoDiskCache();
+        } catch(Exception e) {
+            logger.logThrowable(ModDirectorSeverityLevel.WARN, "ModDirector", "CORE", e,
+                    "Failed to persist mod info disk cache");
+        }
+
         installSelector.accept(excludedMods, freshInstalls, reInstalls);
 
         if(hasFatalError()) {

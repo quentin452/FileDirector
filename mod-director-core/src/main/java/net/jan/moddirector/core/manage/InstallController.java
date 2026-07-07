@@ -25,10 +25,20 @@ public class InstallController {
     private static final String LOG_DOMAIN = "ModDirector/InstallController";
     private final ModDirector director;
     private final InstalledModsTracker tracker;
+    private final ModInfoDiskCache diskCache;
 
     public InstallController(ModDirector director, InstalledModsTracker tracker) {
         this.director = director;
         this.tracker = tracker;
+        this.diskCache = new ModInfoDiskCache(director);
+    }
+
+    /**
+     * Persists the on-disk mod-info cache. Called once, right after the pre-install query phase,
+     * so warm boots can skip the network query. Never throws (the cache is fail-open).
+     */
+    public void persistModInfoDiskCache() {
+        diskCache.save();
     }
 
     private ModDirectorSeverityLevel downloadSeverityLevelFor(ModDirectorRemoteMod mod) {
@@ -74,21 +84,33 @@ public class InstallController {
 
                 RemoteModInformation information;
 
-                try {
-                    information = mod.queryInformation();
-                    // Cache the information for later use
-                    synchronized(modInfoCache) {
-                        modInfoCache.put(mod, information);
+                // Immutable per-file identity (Curse/Modrinth file id, or full URL for URL mods),
+                // so a bundle change yields a new key and thus an automatic cache miss.
+                String cacheKey = mod.remoteType() + "|" + mod.offlineName();
+                RemoteModInformation cachedInformation = diskCache.get(cacheKey);
+
+                if(cachedInformation != null) {
+                    // Warm boot: reuse persisted info and skip the network query entirely.
+                    information = cachedInformation;
+                } else {
+                    try {
+                        information = mod.queryInformation();
+                        diskCache.put(cacheKey, information);
+                    } catch(ModDirectorException e) {
+                        director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
+                                "CORE", e, "Failed to query information for %s from %s",
+                                mod.offlineName(), mod.remoteType());
+                        director.addError(new ModDirectorError(downloadSeverityLevelFor(mod),
+                                "Failed to query information for mod " + mod.offlineName() + " from " + mod.remoteType(),
+                                e));
+                        callback.done();
+                        return null;
                     }
-                } catch(ModDirectorException e) {
-                    director.getLogger().logThrowable(ModDirectorSeverityLevel.ERROR, LOG_DOMAIN,
-                            "CORE", e, "Failed to query information for %s from %s",
-                            mod.offlineName(), mod.remoteType());
-                    director.addError(new ModDirectorError(downloadSeverityLevelFor(mod),
-                            "Failed to query information for mod " + mod.offlineName() + " from " + mod.remoteType(),
-                            e));
-                    callback.done();
-                    return null;
+                }
+
+                // Cache the information for later use (in-memory, used by identifyOldMods etc.)
+                synchronized(modInfoCache) {
+                    modInfoCache.put(mod, information);
                 }
 
                 callback.title(information.getDisplayName());
